@@ -34,9 +34,9 @@ export function dctHash(raster: number[]): string {
   for (let i = 0; i < coeffs.length; i++) {
     if (coeffs[i] > (i === 0 ? 0 : median)) {
       if (i < 32) {
-        hashHigh |= (1 << i);
+        hashHigh = (hashHigh | (1 << i)) >>> 0;
       } else {
-        hashLow |= (1 << (i - 32));
+        hashLow = (hashLow | (1 << (i - 32))) >>> 0;
       }
     }
   }

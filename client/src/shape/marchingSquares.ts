@@ -1,4 +1,4 @@
-import { GRID_SIZE } from 'shape-research-shared';
+import { GRID_SIZE, type Point } from 'shape-research-shared';
 
 /**
  * Marching squares lookup table.
@@ -24,12 +24,7 @@ const EDGE_TABLE: number[][] = [
   [],         // 1111
 ];
 
-interface EdgePoint {
-  x: number;
-  y: number;
-}
-
-function edgeMidpoint(edge: number, row: number, col: number): EdgePoint {
+function edgeMidpoint(edge: number, row: number, col: number): Point {
   switch (edge) {
     case 0: return { x: col + 0.5, y: row };       // top
     case 1: return { x: col + 1, y: row + 0.5 };   // right
@@ -45,7 +40,7 @@ function edgeMidpoint(edge: number, row: number, col: number): EdgePoint {
  */
 export function rasterToSvgPath(raster: number[]): string {
   // Collect line segments from marching squares
-  const segments: [EdgePoint, EdgePoint][] = [];
+  const segments: [Point, Point][] = [];
 
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
@@ -106,37 +101,56 @@ function rasterToRectPath(raster: number[]): string {
   return path;
 }
 
+/** Snap a coordinate to 2 decimal places and return a Map key. */
+function pointKey(p: Point): string {
+  return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+}
+
 /**
- * Chain line segments into closed contours.
+ * Chain line segments into closed contours using an endpoint map for O(n) lookup.
  */
-function chainSegments(segments: [EdgePoint, EdgePoint][]): EdgePoint[][] {
-  const contours: EdgePoint[][] = [];
-  const used = new Array(segments.length).fill(false);
+function chainSegments(segments: [Point, Point][]): Point[][] {
+  // Build adjacency map: each snapped endpoint → list of [segmentIndex, otherEndpoint]
+  const adj = new Map<string, { idx: number; other: Point }[]>();
+
+  for (let i = 0; i < segments.length; i++) {
+    const [a, b] = segments[i];
+    const ka = pointKey(a);
+    const kb = pointKey(b);
+
+    let listA = adj.get(ka);
+    if (!listA) { listA = []; adj.set(ka, listA); }
+    listA.push({ idx: i, other: b });
+
+    let listB = adj.get(kb);
+    if (!listB) { listB = []; adj.set(kb, listB); }
+    listB.push({ idx: i, other: a });
+  }
+
+  const used = new Uint8Array(segments.length);
+  const contours: Point[][] = [];
 
   for (let start = 0; start < segments.length; start++) {
     if (used[start]) continue;
-    used[start] = true;
+    used[start] = 1;
 
-    const contour: EdgePoint[] = [segments[start][0], segments[start][1]];
+    const contour: Point[] = [segments[start][0], segments[start][1]];
 
-    let changed = true;
-    while (changed) {
-      changed = false;
+    let extended = true;
+    while (extended) {
+      extended = false;
       const last = contour[contour.length - 1];
+      const key = pointKey(last);
+      const neighbors = adj.get(key);
+      if (!neighbors) continue;
 
-      for (let i = 0; i < segments.length; i++) {
-        if (used[i]) continue;
-
-        const [a, b] = segments[i];
-        if (near(a, last)) {
-          contour.push(b);
-          used[i] = true;
-          changed = true;
-        } else if (near(b, last)) {
-          contour.push(a);
-          used[i] = true;
-          changed = true;
-        }
+      for (let n = 0; n < neighbors.length; n++) {
+        const entry = neighbors[n];
+        if (used[entry.idx]) continue;
+        used[entry.idx] = 1;
+        contour.push(entry.other);
+        extended = true;
+        break;
       }
     }
 
@@ -144,8 +158,4 @@ function chainSegments(segments: [EdgePoint, EdgePoint][]): EdgePoint[][] {
   }
 
   return contours;
-}
-
-function near(a: EdgePoint, b: EdgePoint): boolean {
-  return Math.abs(a.x - b.x) < 0.01 && Math.abs(a.y - b.y) < 0.01;
 }

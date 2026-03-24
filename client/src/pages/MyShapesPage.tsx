@@ -1,6 +1,6 @@
 import { useMyShapes } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
-import { emptyStateStyle } from '../styles';
+import { pageStyle, pageTitleStyle, emptyStateStyle, TINY_FONT, SECONDARY_COLOR } from '../styles';
 
 export default function MyShapesPage() {
   const shapes = useMyShapes();
@@ -10,14 +10,8 @@ export default function MyShapesPage() {
   }
 
   return (
-    <div style={{
-      maxWidth: '480px',
-      margin: '2rem auto',
-      padding: '0 1.25rem',
-    }}>
-      <h1 style={{ fontSize: '1rem', fontWeight: 'normal', marginBottom: '1.5rem' }}>
-        my shapes
-      </h1>
+    <div style={pageStyle}>
+      <h1 style={pageTitleStyle}>my shapes</h1>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
@@ -26,7 +20,7 @@ export default function MyShapesPage() {
         {shapes.map((shape) => (
           <div key={shape.hash} style={{ textAlign: 'center' }}>
             <FittedShape raster={shape.raster} size={64} />
-            <div style={{ fontSize: '0.6875rem', color: '#888', marginTop: '0.25rem' }}>
+            <div style={{ fontSize: TINY_FONT, color: SECONDARY_COLOR, marginTop: '0.25rem' }}>
               {new Date(shape.timestamp).toLocaleDateString()}
             </div>
           </div>

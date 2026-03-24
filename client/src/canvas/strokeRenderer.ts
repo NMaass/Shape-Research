@@ -60,6 +60,12 @@ export function fadeStroke(
   const ctx: CanvasRenderingContext2D = maybeCtx;
   const start = performance.now();
   let animId = 0;
+  let done = false;
+  function complete() {
+    if (done) return;
+    done = true;
+    onComplete();
+  }
 
   function frame(now: number) {
     const elapsed = now - start;
@@ -72,13 +78,13 @@ export function fadeStroke(
       drawStroke(ctx, points, alpha);
       animId = requestAnimationFrame(frame);
     } else {
-      onComplete();
+      complete();
     }
   }
 
   animId = requestAnimationFrame(frame);
   return () => {
     cancelAnimationFrame(animId);
-    onComplete();
+    complete();
   };
 }

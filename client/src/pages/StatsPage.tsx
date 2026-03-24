@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import ProgressBar from '../components/ProgressBar';
 import { getStats } from '../api/client';
-import { emptyStateStyle } from '../styles';
+import { emptyStateStyle, secondaryTextStyle } from '../styles';
 
 // Upper bound estimate for distinct canonical shapes on an 8×8 binary grid
 // under dihedral symmetry (4 rotations × 2 reflections). The true count of
@@ -47,7 +47,7 @@ export default function StatsPage() {
       padding: '0 1.25rem',
     }}>
       <ProgressBar fraction={fraction} />
-      <p style={{ fontSize: '0.875rem', color: '#888' }}>
+      <p style={secondaryTextStyle}>
         {pct}% of shapes have been discovered
       </p>
     </div>

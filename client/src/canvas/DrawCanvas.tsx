@@ -6,6 +6,7 @@ import { processShape } from '../pipeline/pipeline';
 import { discoverShape } from '../api/client';
 import { saveShape } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
+import { secondaryTextStyle, SMALL_FONT } from '../styles';
 
 const RESULT_DISPLAY_MS = 3000;
 
@@ -166,10 +167,10 @@ export default function DrawCanvas() {
           gap: '0.75rem',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.75rem', color: '#888' }}>evaluated as →</span>
+            <span style={{ ...secondaryTextStyle, fontSize: '0.75rem' }}>evaluated as →</span>
             <FittedShape raster={result.raster} size={48} />
           </div>
-          <p style={{ fontSize: '0.875rem' }}>
+          <p style={{ fontSize: SMALL_FONT }}>
             {result.isNew ? 'shape discovered.' : 'this shape has been drawn before.'}
           </p>
         </div>

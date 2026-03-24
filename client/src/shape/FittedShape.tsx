@@ -8,7 +8,8 @@ interface FittedShapeProps {
 }
 
 export default function FittedShape({ raster, size }: FittedShapeProps) {
-  const path = useMemo(() => rasterToSvgPath(raster), [raster]);
+  const rasterKey = JSON.stringify(raster);
+  const path = useMemo(() => rasterToSvgPath(raster), [rasterKey]);
 
   // Add padding around the shape
   const padding = 0.5;

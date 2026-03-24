@@ -2,8 +2,6 @@ import type { DiscoverResult, StatsResult } from 'shape-research-shared';
 
 const API_BASE = '/api';
 
-export type { DiscoverResult, StatsResult };
-
 export async function discoverShape(
   hash: string,
   raster: number[],
