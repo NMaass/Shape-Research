@@ -9,7 +9,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["ShapeRegistry"]
+new_sqlite_classes = ["ShapeRegistry"]
 
 [[kv_namespaces]]
 binding = "SHAPES"
