@@ -5,7 +5,6 @@ export { ShapeRegistry };
 export interface Env {
   SHAPE_REGISTRY: DurableObjectNamespace;
   SHAPES: KVNamespace;
-  BLOOM: R2Bucket;
 }
 
 const CORS_HEADERS = {

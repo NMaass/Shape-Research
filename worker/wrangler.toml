@@ -14,7 +14,3 @@ new_classes = ["ShapeRegistry"]
 [[kv_namespaces]]
 binding = "SHAPES"
 id = "placeholder-shapes-kv-id"
-
-[[r2_buckets]]
-binding = "BLOOM"
-bucket_name = "shape-research-bloom"
