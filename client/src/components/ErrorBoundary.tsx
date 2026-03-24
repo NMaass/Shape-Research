@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
+import { emptyStateStyle } from '../styles';
 
 interface Props {
   children: ReactNode;
@@ -23,13 +24,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          paddingTop: '3rem',
-          fontSize: '0.875rem',
-          color: '#888',
-        }}>
+        <div style={emptyStateStyle}>
           something went wrong — try refreshing the page
         </div>
       );

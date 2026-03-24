@@ -1,31 +1,36 @@
 import { useState, useEffect } from 'react';
 import ProgressBar from '../components/ProgressBar';
 import { getStats } from '../api/client';
+import { emptyStateStyle } from '../styles';
 
 // Upper bound estimate for distinct canonical shapes on an 8×8 binary grid
 // under dihedral symmetry (4 rotations × 2 reflections). The true count of
 // connected polyominoes is much smaller, but this serves as a progress ceiling.
 const ESTIMATED_TOTAL = 10_000_000;
 
+type LoadState = 'loading' | 'error' | 'ready';
+
 export default function StatsPage() {
-  const [discovered, setDiscovered] = useState<number | null>(null);
+  const [discovered, setDiscovered] = useState(0);
+  const [state, setState] = useState<LoadState>('loading');
 
   useEffect(() => {
-    getStats().then(s => setDiscovered(s.totalDiscovered));
+    getStats().then(result => {
+      if (result) {
+        setDiscovered(result.totalDiscovered);
+        setState('ready');
+      } else {
+        setState('error');
+      }
+    });
   }, []);
 
-  if (discovered === null) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        paddingTop: '3rem',
-        fontSize: '0.875rem',
-        color: '#888',
-      }}>
-        loading...
-      </div>
-    );
+  if (state === 'loading') {
+    return <div style={emptyStateStyle}>loading...</div>;
+  }
+
+  if (state === 'error') {
+    return <div style={emptyStateStyle}>could not reach server</div>;
   }
 
   const fraction = discovered / ESTIMATED_TOTAL;

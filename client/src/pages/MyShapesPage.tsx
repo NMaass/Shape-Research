@@ -1,21 +1,12 @@
 import { useMyShapes } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
+import { emptyStateStyle } from '../styles';
 
 export default function MyShapesPage() {
   const shapes = useMyShapes();
 
   if (shapes.length === 0) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        paddingTop: '3rem',
-        fontSize: '0.875rem',
-        color: '#888',
-      }}>
-        no shapes discovered yet — go draw
-      </div>
-    );
+    return <div style={emptyStateStyle}>no shapes discovered yet — go draw</div>;
   }
 
   return (

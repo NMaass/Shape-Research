@@ -24,12 +24,12 @@ export async function discoverShape(
   }
 }
 
-export async function getStats(): Promise<StatsResult> {
+export async function getStats(): Promise<StatsResult | null> {
   try {
     const res = await fetch(`${API_BASE}/stats`);
     if (res.ok) return res.json();
   } catch {
     // Server unavailable
   }
-  return { totalDiscovered: 0 };
+  return null;
 }

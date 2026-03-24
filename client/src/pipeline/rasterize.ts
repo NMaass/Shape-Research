@@ -1,7 +1,6 @@
 import type { Point } from 'shape-research-shared';
 import { GRID_SIZE } from 'shape-research-shared';
-
-const EPSILON = 1e-10;
+import { EPSILON } from '../math';
 
 /**
  * Test if a point is inside a polygon using ray casting.

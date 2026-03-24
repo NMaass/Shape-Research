@@ -62,7 +62,8 @@ export function fadeStroke(
 ): () => void {
   const maybeCtx = canvas.getContext('2d');
   if (!maybeCtx) return () => {};
-  const renderCtx: CanvasRenderingContext2D = maybeCtx;
+  // Re-bind to a non-nullable const so TypeScript narrows inside the closure
+  const ctx: CanvasRenderingContext2D = maybeCtx;
   const start = performance.now();
   let animId = 0;
 
@@ -71,10 +72,10 @@ export function fadeStroke(
     const progress = Math.min(elapsed / FADE_DURATION, 1);
     const alpha = 1 - progress;
 
-    renderCtx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (alpha > 0) {
-      drawStroke(renderCtx, points, alpha);
+      drawStroke(ctx, points, alpha);
       animId = requestAnimationFrame(frame);
     } else {
       onComplete();

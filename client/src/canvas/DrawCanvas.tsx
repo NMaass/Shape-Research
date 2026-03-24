@@ -85,13 +85,16 @@ export default function DrawCanvas() {
     // Process through pipeline
     const shapeResult = processShape(loop);
 
-    // Check with server and save locally
+    // Check with server
     const discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
 
     // Discard if a newer loop was closed while we awaited
     if (thisRequest !== requestIdRef.current) return;
 
-    saveShape(shapeResult.hash, shapeResult.raster);
+    // Save locally only if confirmed new
+    if (discovery.isNew) {
+      saveShape(shapeResult.hash, shapeResult.raster);
+    }
 
     // Show result
     setResult({
@@ -146,7 +149,7 @@ export default function DrawCanvas() {
       />
 
       {result && (
-        <div style={{
+        <div aria-live="polite" style={{
           position: 'absolute',
           bottom: '2rem',
           left: '50%',

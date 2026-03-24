@@ -1,4 +1,5 @@
 import type { Point } from 'shape-research-shared';
+import { EPSILON } from '../math';
 
 export interface IntersectionResult {
   point: Point;
@@ -7,8 +8,6 @@ export interface IntersectionResult {
   /** Parametric t along the earlier segment */
   t: number;
 }
-
-const EPSILON = 1e-10;
 
 /**
  * Test if two line segments intersect.
