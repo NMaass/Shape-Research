@@ -13,4 +13,4 @@ new_classes = ["ShapeRegistry"]
 
 [[kv_namespaces]]
 binding = "SHAPES"
-id = "placeholder-shapes-kv-id"
+id = "85b3a8b263c14f3992cb4ec99ed59479"
