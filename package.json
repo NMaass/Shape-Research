@@ -1,0 +1,9 @@
+{
+  "name": "shape-research",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "client",
+    "worker"
+  ]
+}

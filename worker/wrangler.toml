@@ -1,0 +1,20 @@
+name = "shape-research"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+[durable_objects]
+bindings = [
+  { name = "SHAPE_REGISTRY", class_name = "ShapeRegistry" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ShapeRegistry"]
+
+[[kv_namespaces]]
+binding = "SHAPES"
+id = "placeholder-shapes-kv-id"
+
+[[r2_buckets]]
+binding = "BLOOM"
+bucket_name = "shape-research-bloom"
