@@ -1,4 +1,4 @@
-const GRID_SIZE = 8;
+import { GRID_SIZE } from 'shape-research-shared';
 
 /**
  * Marching squares lookup table.

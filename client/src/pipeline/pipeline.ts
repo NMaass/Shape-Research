@@ -1,5 +1,4 @@
-import type { Point } from 'shape-research-shared';
-import type { ShapeResult } from 'shape-research-shared';
+import type { Point, ShapeResult } from 'shape-research-shared';
 import { resample } from './resample';
 import { normalize } from './normalize';
 import { rasterize } from './rasterize';

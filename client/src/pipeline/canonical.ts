@@ -1,4 +1,4 @@
-const GRID_SIZE = 8;
+import { GRID_SIZE } from 'shape-research-shared';
 
 /**
  * Rotate a raster 90 degrees clockwise.

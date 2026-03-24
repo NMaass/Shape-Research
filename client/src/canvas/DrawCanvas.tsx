@@ -3,6 +3,7 @@ import type { Point } from 'shape-research-shared';
 import { usePointerStroke } from './usePointerStroke';
 import { drawStroke, drawLoop, fadeStroke } from './strokeRenderer';
 import { processShape } from '../pipeline/pipeline';
+import { discoverShape } from '../api/client';
 import { saveShape } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
 
@@ -15,35 +16,47 @@ interface ResultState {
 export default function DrawCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [result, setResult] = useState<ResultState | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Resize canvas to fill container
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
     const resize = () => {
-      const parent = canvas.parentElement!;
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
     };
 
     resize();
     const observer = new ResizeObserver(resize);
-    observer.observe(canvas.parentElement!);
+    observer.observe(parent);
     return () => observer.disconnect();
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, []);
 
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
   const handleStrokeUpdate = useCallback((points: Point[]) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawStroke(ctx, points);
   }, []);
@@ -51,7 +64,8 @@ export default function DrawCanvas() {
   const handleLoopClosed = useCallback(async (loop: Point[]) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
     // Draw the closed loop
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -60,18 +74,19 @@ export default function DrawCanvas() {
     // Process through pipeline
     const shapeResult = processShape(loop);
 
-    // Save to local storage
+    // Check with server and save locally
+    const discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
     saveShape(shapeResult.hash, shapeResult.raster);
 
     // Show result
     setResult({
-      isNew: true,
+      isNew: discovery.isNew,
       raster: shapeResult.raster,
       hash: shapeResult.hash,
     });
 
     // Clear after delay
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       clearCanvas();
       setResult(null);
     }, 3000);

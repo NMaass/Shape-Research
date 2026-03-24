@@ -60,7 +60,8 @@ export function fadeStroke(
   points: Point[],
   onComplete: () => void,
 ): void {
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
   const start = performance.now();
 
   function frame(now: number) {
@@ -68,10 +69,10 @@ export function fadeStroke(
     const progress = Math.min(elapsed / FADE_DURATION, 1);
     const alpha = 1 - progress;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx!.clearRect(0, 0, canvas.width, canvas.height);
 
     if (alpha > 0) {
-      drawStroke(ctx, points, alpha);
+      drawStroke(ctx!, points, alpha);
       requestAnimationFrame(frame);
     } else {
       onComplete();

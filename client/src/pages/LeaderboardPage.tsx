@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getLeaderboard } from '../api/client';
+import type { LeaderboardEntry } from '../api/client';
 import FittedShape from '../shape/FittedShape';
-
-interface LeaderboardEntry {
-  name: string;
-  count: number;
-  recentShapes: number[][];
-}
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -38,15 +33,15 @@ export default function LeaderboardPage() {
       <h1 style={{ fontSize: '1rem', fontWeight: 'normal', marginBottom: '1.5rem' }}>
         leaderboard
       </h1>
-      {entries.map((entry, i) => (
-        <div key={i} style={{
+      {entries.map((entry) => (
+        <div key={entry.name} style={{
           display: 'flex',
           alignItems: 'center',
           gap: '1rem',
           marginBottom: '1.25rem',
           fontSize: '0.875rem',
         }}>
-          <span style={{ color: '#888', width: '1.5rem' }}>{i + 1}.</span>
+          <span style={{ color: '#888', width: '1.5rem' }}>{entries.indexOf(entry) + 1}.</span>
           <span style={{ flex: 1 }}>{entry.name}</span>
           <span style={{ color: '#888' }}>{entry.count}</span>
           <div style={{ display: 'flex', gap: '0.25rem' }}>

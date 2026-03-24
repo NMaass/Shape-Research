@@ -25,7 +25,7 @@ export default function StatsPage() {
       padding: '0 1.25rem',
     }}>
       <ProgressBar fraction={fraction} />
-      <p style={{ fontSize: '0.875rem', color: '#666' }}>
+      <p style={{ fontSize: '0.875rem', color: '#888' }}>
         {pct}% of shapes have been discovered
       </p>
     </div>

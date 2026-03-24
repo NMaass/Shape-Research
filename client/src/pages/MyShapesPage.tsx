@@ -20,7 +20,7 @@ export default function MyShapesPage() {
 
   return (
     <div style={{
-      maxWidth: '600px',
+      maxWidth: '480px',
       margin: '2rem auto',
       padding: '0 1.25rem',
     }}>
@@ -32,8 +32,8 @@ export default function MyShapesPage() {
         gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
         gap: '1rem',
       }}>
-        {shapes.map((shape, i) => (
-          <div key={i} style={{ textAlign: 'center' }}>
+        {shapes.map((shape) => (
+          <div key={shape.hash} style={{ textAlign: 'center' }}>
             <FittedShape raster={shape.raster} size={64} />
             <div style={{ fontSize: '0.6875rem', color: '#888', marginTop: '0.25rem' }}>
               {new Date(shape.timestamp).toLocaleDateString()}

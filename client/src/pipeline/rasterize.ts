@@ -1,6 +1,5 @@
 import type { Point } from 'shape-research-shared';
-
-const GRID_SIZE = 8;
+import { GRID_SIZE } from 'shape-research-shared';
 
 /**
  * Test if a point is inside a polygon using ray casting.

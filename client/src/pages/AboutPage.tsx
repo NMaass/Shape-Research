@@ -2,7 +2,7 @@ export default function AboutPage() {
   return (
     <div style={{
       maxWidth: '480px',
-      margin: '3rem auto',
+      margin: '2rem auto',
       padding: '0 1.25rem',
       lineHeight: 1.7,
       fontSize: '0.9375rem',
@@ -26,8 +26,7 @@ export default function AboutPage() {
       </p>
       <p style={{ marginBottom: '1rem', color: '#888' }}>
         shape research is part of a trilogy with{' '}
-        <span style={{ textDecoration: 'underline' }}>word research</span> and{' '}
-        <span style={{ textDecoration: 'underline' }}>number research</span> by loby.
+        word research and number research by loby.
         created by nicholas maassen.
       </p>
     </div>

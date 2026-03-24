@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
+import { GRID_SIZE } from 'shape-research-shared';
 import { rasterToSvgPath } from './marchingSquares';
 
 interface FittedShapeProps {
   raster: number[];
   size: number;
 }
-
-const GRID_SIZE = 8;
 
 export default function FittedShape({ raster, size }: FittedShapeProps) {
   const path = useMemo(() => rasterToSvgPath(raster), [raster]);

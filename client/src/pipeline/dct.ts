@@ -1,4 +1,5 @@
-const GRID_SIZE = 8;
+import { GRID_SIZE } from 'shape-research-shared';
+
 const DCT_SIZE = 4; // Extract top-left 4×4
 
 /**
@@ -44,24 +45,8 @@ export function dctHash(raster: number[]): string {
     }
   }
 
-  // Encode as hex string (16 coefficients = 16 bits, but we use full 32-bit words for future expansion)
+  // Encode as hex string using two 32-bit words
   const hex = (hashHigh >>> 0).toString(16).padStart(8, '0') +
               (hashLow >>> 0).toString(16).padStart(8, '0');
   return hex;
-}
-
-/**
- * Compute Hamming distance between two hex hash strings.
- */
-export function hammingDistance(a: string, b: string): number {
-  if (a.length !== b.length) return Infinity;
-
-  let dist = 0;
-  // Compare 4 bits at a time
-  for (let i = 0; i < a.length; i++) {
-    const xor = parseInt(a[i], 16) ^ parseInt(b[i], 16);
-    // Count bits in nibble
-    dist += ((xor >> 0) & 1) + ((xor >> 1) & 1) + ((xor >> 2) & 1) + ((xor >> 3) & 1);
-  }
-  return dist;
 }

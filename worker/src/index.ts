@@ -45,6 +45,7 @@ export default {
 
       return json({ error: 'not found' }, 404);
     } catch (err) {
+      console.error('request failed:', err);
       return json({ error: 'internal error' }, 500);
     }
   },
@@ -79,10 +80,10 @@ async function handleDiscover(request: Request, env: Env): Promise<Response> {
     method: 'POST',
     body: JSON.stringify(body),
   }));
-  const data = await res.json();
+  const data = await res.json() as { isNew: boolean; discoveryNumber?: number };
 
-  // If new discovery, also write metadata to KV
-  if ((data as { isNew: boolean }).isNew) {
+  // If new discovery, write metadata to KV (count comes from DO, no race)
+  if (data.isNew) {
     await env.SHAPES.put(`shape:${body.hash}`, JSON.stringify({
       hash: body.hash,
       raster: body.raster,
@@ -90,10 +91,9 @@ async function handleDiscover(request: Request, env: Env): Promise<Response> {
       timestamp: Date.now(),
     }));
 
-    // Update stats counter
-    const countStr = await env.SHAPES.get('stats:totalDiscovered');
-    const count = countStr ? parseInt(countStr, 10) : 0;
-    await env.SHAPES.put('stats:totalDiscovered', String(count + 1));
+    if (data.discoveryNumber !== undefined) {
+      await env.SHAPES.put('stats:totalDiscovered', String(data.discoveryNumber));
+    }
   }
 
   return json(data);
