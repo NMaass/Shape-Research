@@ -53,31 +53,34 @@ export function drawLoop(
 
 /**
  * Fade a stroke out over FADE_DURATION ms, clearing and redrawing each frame.
- * Calls onComplete when done.
+ * Calls onComplete when done. Returns a cancel function.
  */
 export function fadeStroke(
   canvas: HTMLCanvasElement,
   points: Point[],
   onComplete: () => void,
-): void {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+): () => void {
+  const maybeCtx = canvas.getContext('2d');
+  if (!maybeCtx) return () => {};
+  const renderCtx: CanvasRenderingContext2D = maybeCtx;
   const start = performance.now();
+  let animId = 0;
 
   function frame(now: number) {
     const elapsed = now - start;
     const progress = Math.min(elapsed / FADE_DURATION, 1);
     const alpha = 1 - progress;
 
-    ctx!.clearRect(0, 0, canvas.width, canvas.height);
+    renderCtx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (alpha > 0) {
-      drawStroke(ctx!, points, alpha);
-      requestAnimationFrame(frame);
+      drawStroke(renderCtx, points, alpha);
+      animId = requestAnimationFrame(frame);
     } else {
       onComplete();
     }
   }
 
-  requestAnimationFrame(frame);
+  animId = requestAnimationFrame(frame);
+  return () => cancelAnimationFrame(animId);
 }

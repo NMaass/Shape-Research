@@ -33,7 +33,7 @@ export default function LeaderboardPage() {
       <h1 style={{ fontSize: '1rem', fontWeight: 'normal', marginBottom: '1.5rem' }}>
         leaderboard
       </h1>
-      {entries.map((entry) => (
+      {entries.map((entry, index) => (
         <div key={entry.name} style={{
           display: 'flex',
           alignItems: 'center',
@@ -41,7 +41,7 @@ export default function LeaderboardPage() {
           marginBottom: '1.25rem',
           fontSize: '0.875rem',
         }}>
-          <span style={{ color: '#888', width: '1.5rem' }}>{entries.indexOf(entry) + 1}.</span>
+          <span style={{ color: '#888', width: '1.5rem' }}>{index + 1}.</span>
           <span style={{ flex: 1 }}>{entry.name}</span>
           <span style={{ color: '#888' }}>{entry.count}</span>
           <div style={{ display: 'flex', gap: '0.25rem' }}>

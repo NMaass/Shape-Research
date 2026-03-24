@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 const STORAGE_KEY = 'shape-research-discoveries';
+const MAX_STORED_SHAPES = 500;
 
 export interface StoredShape {
   hash: string;
@@ -21,6 +22,7 @@ export function saveShape(hash: string, raster: number[]): void {
   const shapes = getMyShapes();
   if (shapes.some(s => s.hash === hash)) return;
   shapes.unshift({ hash, raster, timestamp: Date.now() });
+  if (shapes.length > MAX_STORED_SHAPES) shapes.length = MAX_STORED_SHAPES;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(shapes));
   window.dispatchEvent(new Event('shapes-updated'));
 }

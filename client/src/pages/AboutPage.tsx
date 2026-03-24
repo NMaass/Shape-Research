@@ -5,7 +5,7 @@ export default function AboutPage() {
       margin: '2rem auto',
       padding: '0 1.25rem',
       lineHeight: 1.7,
-      fontSize: '0.9375rem',
+      fontSize: '0.875rem',
     }}>
       <h1 style={{ fontSize: '1rem', fontWeight: 'normal', marginBottom: '1.5rem' }}>
         about shape research

@@ -5,10 +5,6 @@ export interface Point {
   y: number;
 }
 
-export interface TimedPoint extends Point {
-  t: number;
-}
-
 export interface ShapeResult {
   hash: string;
   raster: number[];
@@ -21,6 +17,4 @@ export interface DiscoveryRecord {
   timestamp: number;
   isNew: boolean;
   discoveryNumber?: number;
-  firstDiscovered?: number;
-  timesSubmitted?: number;
 }

@@ -56,7 +56,7 @@ export function usePointerStroke({
     onStrokeUpdate([...points]);
   }, [onStrokeUpdate, onLoopClosed, minDistance]);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+  const handlePointerUp = useCallback((_e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!activeRef.current) return;
     activeRef.current = false;
 

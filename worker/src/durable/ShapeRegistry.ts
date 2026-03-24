@@ -35,11 +35,6 @@ export class ShapeRegistry implements DurableObject {
       });
     }
 
-    if (url.pathname === '/count') {
-      const count = await this.state.storage.get<number>('meta:count') ?? 0;
-      return Response.json({ count });
-    }
-
     return Response.json({ error: 'unknown path' }, { status: 404 });
   }
 }

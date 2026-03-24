@@ -17,6 +17,7 @@ export default function DrawCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [result, setResult] = useState<ResultState | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const requestIdRef = useRef(0);
 
   // Resize canvas to fill container
   useEffect(() => {
@@ -67,6 +68,12 @@ export default function DrawCanvas() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Cancel any pending timer from a previous loop
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    // Track this request so stale async results are discarded
+    const thisRequest = ++requestIdRef.current;
+
     // Draw the closed loop
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawLoop(ctx, loop);
@@ -76,6 +83,10 @@ export default function DrawCanvas() {
 
     // Check with server and save locally
     const discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
+
+    // Discard if a newer loop was closed while we awaited
+    if (thisRequest !== requestIdRef.current) return;
+
     saveShape(shapeResult.hash, shapeResult.raster);
 
     // Show result
@@ -112,6 +123,8 @@ export default function DrawCanvas() {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        role="img"
+        aria-label="drawing canvas — draw a closed shape to discover it"
         style={{
           display: 'block',
           width: '100%',

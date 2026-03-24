@@ -1,14 +1,13 @@
 import { GRID_SIZE } from 'shape-research-shared';
 
-const DCT_SIZE = 4; // Extract top-left 4×4
+const DCT_SIZE = GRID_SIZE; // Use full 8×8 block for 64-bit hash
 
 /**
  * Compute 2D Type-II DCT of an 8×8 grid.
- * Extract the top-left 4×4 block (16 low-frequency coefficients).
- * Threshold at median to produce a 64-bit hash.
+ * Extract coefficients, threshold at median to produce a 64-bit hash.
  */
 export function dctHash(raster: number[]): string {
-  // Compute 2D DCT coefficients for the top-left 4×4 block
+  // Compute 2D DCT coefficients for the full 8×8 block
   const coeffs: number[] = [];
 
   for (let u = 0; u < DCT_SIZE; u++) {
@@ -30,8 +29,7 @@ export function dctHash(raster: number[]): string {
   const median = sorted[Math.floor(sorted.length / 2)];
 
   // Threshold to produce hash bits
-  // Skip DC component (index 0), use remaining 15 coefficients
-  // Plus use DC > 0 as bit 0
+  // DC component uses threshold of 0; all others use median
   let hashHigh = 0;
   let hashLow = 0;
 
@@ -45,7 +43,7 @@ export function dctHash(raster: number[]): string {
     }
   }
 
-  // Encode as hex string using two 32-bit words
+  // Encode as hex string using two 32-bit words (64 bits total)
   const hex = (hashHigh >>> 0).toString(16).padStart(8, '0') +
               (hashLow >>> 0).toString(16).padStart(8, '0');
   return hex;

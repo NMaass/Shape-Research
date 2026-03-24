@@ -1,12 +1,5 @@
 const API_BASE = '/api';
 
-export interface CheckResult {
-  isNew: boolean;
-  discoveryNumber?: number;
-  firstDiscovered?: number;
-  timesSubmitted?: number;
-}
-
 export interface DiscoverResult {
   isNew: boolean;
   discoveryNumber?: number;
@@ -20,16 +13,6 @@ export interface LeaderboardEntry {
   name: string;
   count: number;
   recentShapes: number[][];
-}
-
-export async function checkShape(hash: string): Promise<CheckResult> {
-  try {
-    const res = await fetch(`${API_BASE}/check?hash=${encodeURIComponent(hash)}`);
-    if (res.ok) return res.json();
-  } catch {
-    // Server unavailable — fall through to stub
-  }
-  return { isNew: true };
 }
 
 export async function discoverShape(
