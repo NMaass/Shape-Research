@@ -8,13 +8,19 @@ export interface Point {
 export interface ShapeResult {
   hash: string;
   raster: number[];
-  loopPoints: Point[];
 }
 
-export interface DiscoveryRecord {
-  hash: string;
-  raster: number[];
-  timestamp: number;
+export interface DiscoverResult {
   isNew: boolean;
   discoveryNumber?: number;
+}
+
+export interface StatsResult {
+  totalDiscovered: number;
+}
+
+export interface LeaderboardEntry {
+  name: string;
+  count: number;
+  recentShapes: number[][];
 }

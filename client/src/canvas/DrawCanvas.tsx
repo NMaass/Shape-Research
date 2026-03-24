@@ -7,6 +7,8 @@ import { discoverShape } from '../api/client';
 import { saveShape } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
 
+const RESULT_DISPLAY_MS = 3000;
+
 interface ResultState {
   isNew: boolean;
   raster: number[];
@@ -18,6 +20,7 @@ export default function DrawCanvas() {
   const [result, setResult] = useState<ResultState | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const requestIdRef = useRef(0);
+  const fadeRef = useRef<(() => void) | null>(null);
 
   // Resize canvas to fill container
   useEffect(() => {
@@ -38,10 +41,11 @@ export default function DrawCanvas() {
     return () => observer.disconnect();
   }, []);
 
-  // Cleanup timer on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (fadeRef.current) fadeRef.current();
     };
   }, []);
 
@@ -100,13 +104,15 @@ export default function DrawCanvas() {
     timerRef.current = setTimeout(() => {
       clearCanvas();
       setResult(null);
-    }, 3000);
+    }, RESULT_DISPLAY_MS);
   }, [clearCanvas]);
 
   const handleStrokeEnd = useCallback((points: Point[]) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    fadeStroke(canvas, points, () => {});
+    fadeRef.current = fadeStroke(canvas, points, () => {
+      fadeRef.current = null;
+    });
   }, []);
 
   const { handlePointerDown, handlePointerMove, handlePointerUp } =
@@ -117,7 +123,13 @@ export default function DrawCanvas() {
     });
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative', touchAction: 'none' }}>
+    <div style={{
+      width: '100%',
+      height: '100%',
+      position: 'relative',
+      touchAction: 'none',
+      overflow: 'hidden',
+    }}>
       <canvas
         ref={canvasRef}
         onPointerDown={handlePointerDown}

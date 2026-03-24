@@ -1,19 +1,8 @@
+import type { DiscoverResult, StatsResult, LeaderboardEntry } from 'shape-research-shared';
+
 const API_BASE = '/api';
 
-export interface DiscoverResult {
-  isNew: boolean;
-  discoveryNumber?: number;
-}
-
-export interface StatsResult {
-  totalDiscovered: number;
-}
-
-export interface LeaderboardEntry {
-  name: string;
-  count: number;
-  recentShapes: number[][];
-}
+export type { DiscoverResult, StatsResult, LeaderboardEntry };
 
 export async function discoverShape(
   hash: string,
@@ -27,10 +16,12 @@ export async function discoverShape(
       body: JSON.stringify({ hash, raster, user }),
     });
     if (res.ok) return res.json();
+    // Server returned an error — do not claim discovery
+    return { isNew: false };
   } catch {
-    // Server unavailable — fall through to stub
+    // Network failure — optimistically allow offline use
+    return { isNew: true };
   }
-  return { isNew: true };
 }
 
 export async function getStats(): Promise<StatsResult> {

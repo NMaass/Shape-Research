@@ -4,7 +4,6 @@ const links = [
   { to: '/', label: 'draw' },
   { to: '/about', label: 'about' },
   { to: '/stats', label: 'stats' },
-  { to: '/leaderboard', label: 'leaderboard' },
   { to: '/my-shapes', label: 'my shapes' },
 ];
 
