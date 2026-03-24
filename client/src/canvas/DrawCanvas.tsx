@@ -82,32 +82,38 @@ export default function DrawCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawLoop(ctx, loop);
 
-    // Process through pipeline
-    const shapeResult = processShape(loop);
+    try {
+      // Process through pipeline
+      const shapeResult = processShape(loop);
 
-    // Check with server
-    const discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
+      // Check with server
+      const discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
 
-    // Discard if a newer loop was closed while we awaited
-    if (thisRequest !== requestIdRef.current) return;
+      // Discard if a newer loop was closed while we awaited
+      if (thisRequest !== requestIdRef.current) return;
 
-    // Save locally only if confirmed new
-    if (discovery.isNew) {
-      saveShape(shapeResult.hash, shapeResult.raster);
-    }
+      // Save locally only if confirmed new
+      if (discovery.isNew) {
+        saveShape(shapeResult.hash, shapeResult.raster);
+      }
 
-    // Show result
-    setResult({
-      isNew: discovery.isNew,
-      raster: shapeResult.raster,
-      hash: shapeResult.hash,
-    });
+      // Show result
+      setResult({
+        isNew: discovery.isNew,
+        raster: shapeResult.raster,
+        hash: shapeResult.hash,
+      });
 
-    // Clear after delay
-    timerRef.current = setTimeout(() => {
+      // Clear after delay
+      timerRef.current = setTimeout(() => {
+        clearCanvas();
+        setResult(null);
+      }, RESULT_DISPLAY_MS);
+    } catch (err) {
+      console.error('shape processing failed:', err);
       clearCanvas();
       setResult(null);
-    }, RESULT_DISPLAY_MS);
+    }
   }, [clearCanvas]);
 
   const handleStrokeEnd = useCallback((points: Point[]) => {

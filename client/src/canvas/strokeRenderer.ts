@@ -4,10 +4,11 @@ const STROKE_COLOR = '#111';
 const STROKE_WIDTH = 3;
 const FADE_DURATION = 500;
 
-export function drawStroke(
+function drawPath(
   ctx: CanvasRenderingContext2D,
   points: Point[],
-  alpha = 1,
+  closed: boolean,
+  alpha: number,
 ): void {
   if (points.length < 2) return;
 
@@ -23,8 +24,17 @@ export function drawStroke(
   for (let i = 1; i < points.length; i++) {
     ctx.lineTo(points[i].x, points[i].y);
   }
+  if (closed) ctx.closePath();
   ctx.stroke();
   ctx.restore();
+}
+
+export function drawStroke(
+  ctx: CanvasRenderingContext2D,
+  points: Point[],
+  alpha = 1,
+): void {
+  drawPath(ctx, points, false, alpha);
 }
 
 export function drawLoop(
@@ -32,23 +42,7 @@ export function drawLoop(
   points: Point[],
   alpha = 1,
 ): void {
-  if (points.length < 3) return;
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.strokeStyle = STROKE_COLOR;
-  ctx.lineWidth = STROKE_WIDTH;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x, points[i].y);
-  }
-  ctx.closePath();
-  ctx.stroke();
-  ctx.restore();
+  drawPath(ctx, points, true, alpha);
 }
 
 /**
@@ -83,5 +77,8 @@ export function fadeStroke(
   }
 
   animId = requestAnimationFrame(frame);
-  return () => cancelAnimationFrame(animId);
+  return () => {
+    cancelAnimationFrame(animId);
+    onComplete();
+  };
 }

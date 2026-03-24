@@ -19,6 +19,8 @@ export default function FittedShape({ raster, size }: FittedShapeProps) {
       width={size}
       height={size}
       viewBox={`${-padding} ${-padding} ${viewSize} ${viewSize}`}
+      role="img"
+      aria-label="shape"
       style={{ display: 'block' }}
     >
       <path

@@ -17,22 +17,24 @@ export class ShapeRegistry implements DurableObject {
     if (url.pathname === '/discover') {
       const body = await request.json() as { hash: string; raster: number[]; user?: string };
 
-      const exists = await this.state.storage.get<boolean>(`hash:${body.hash}`);
-      if (exists) {
-        return Response.json({ isNew: false });
-      }
+      // Use blockConcurrencyWhile to prevent interleaving between the
+      // existence check and the write, ensuring atomic discovery.
+      let result: { isNew: boolean; discoveryNumber?: number } = { isNew: false };
 
-      // Store hash and update count in a single atomic put
-      const count = await this.state.storage.get<number>('meta:count') ?? 0;
-      await this.state.storage.put({
-        [`hash:${body.hash}`]: true,
-        'meta:count': count + 1,
+      await this.state.blockConcurrencyWhile(async () => {
+        const exists = await this.state.storage.get<boolean>(`hash:${body.hash}`);
+        if (exists) return;
+
+        const count = await this.state.storage.get<number>('meta:count') ?? 0;
+        await this.state.storage.put({
+          [`hash:${body.hash}`]: true,
+          'meta:count': count + 1,
+        });
+
+        result = { isNew: true, discoveryNumber: count + 1 };
       });
 
-      return Response.json({
-        isNew: true,
-        discoveryNumber: count + 1,
-      });
+      return Response.json(result);
     }
 
     if (url.pathname === '/count') {
