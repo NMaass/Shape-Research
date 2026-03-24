@@ -18,9 +18,3 @@ export interface DiscoverResult {
 export interface StatsResult {
   totalDiscovered: number;
 }
-
-export interface LeaderboardEntry {
-  name: string;
-  count: number;
-  recentShapes: number[][];
-}

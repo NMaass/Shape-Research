@@ -1,8 +1,8 @@
-import type { DiscoverResult, StatsResult, LeaderboardEntry } from 'shape-research-shared';
+import type { DiscoverResult, StatsResult } from 'shape-research-shared';
 
 const API_BASE = '/api';
 
-export type { DiscoverResult, StatsResult, LeaderboardEntry };
+export type { DiscoverResult, StatsResult };
 
 export async function discoverShape(
   hash: string,
@@ -19,8 +19,8 @@ export async function discoverShape(
     // Server returned an error — do not claim discovery
     return { isNew: false };
   } catch {
-    // Network failure — optimistically allow offline use
-    return { isNew: true };
+    // Network failure — do not claim discovery without server confirmation
+    return { isNew: false };
   }
 }
 
@@ -32,14 +32,4 @@ export async function getStats(): Promise<StatsResult> {
     // Server unavailable
   }
   return { totalDiscovered: 0 };
-}
-
-export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  try {
-    const res = await fetch(`${API_BASE}/leaderboard`);
-    if (res.ok) return res.json();
-  } catch {
-    // Server unavailable
-  }
-  return [];
 }

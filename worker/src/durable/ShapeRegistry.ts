@@ -22,7 +22,7 @@ export class ShapeRegistry implements DurableObject {
         return Response.json({ isNew: false });
       }
 
-      // Store hash individually and update count atomically
+      // Store hash and update count in a single atomic put
       const count = await this.state.storage.get<number>('meta:count') ?? 0;
       await this.state.storage.put({
         [`hash:${body.hash}`]: true,
@@ -33,6 +33,11 @@ export class ShapeRegistry implements DurableObject {
         isNew: true,
         discoveryNumber: count + 1,
       });
+    }
+
+    if (url.pathname === '/count') {
+      const count = await this.state.storage.get<number>('meta:count') ?? 0;
+      return Response.json({ count });
     }
 
     return Response.json({ error: 'unknown path' }, { status: 404 });

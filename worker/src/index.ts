@@ -86,7 +86,7 @@ async function handleDiscover(request: Request, env: Env): Promise<Response> {
   }));
   const data = await res.json() as { isNew: boolean; discoveryNumber?: number };
 
-  // If new discovery, write metadata to KV (count comes from DO, no race)
+  // If new discovery, write metadata to KV
   if (data.isNew) {
     await env.SHAPES.put(`shape:${body.hash}`, JSON.stringify({
       hash: body.hash,
@@ -94,16 +94,15 @@ async function handleDiscover(request: Request, env: Env): Promise<Response> {
       discoverer: body.user || 'anonymous',
       timestamp: Date.now(),
     }));
-
-    if (data.discoveryNumber !== undefined) {
-      await env.SHAPES.put('stats:totalDiscovered', String(data.discoveryNumber));
-    }
   }
 
   return json(data);
 }
 
 async function handleStats(env: Env): Promise<Response> {
-  const countStr = await env.SHAPES.get('stats:totalDiscovered');
-  return json({ totalDiscovered: countStr ? parseInt(countStr, 10) : 0 });
+  // Read count from the DO (source of truth) instead of KV
+  const registry = await getRegistry(env);
+  const res = await registry.fetch(new Request('http://do/count'));
+  const data = await res.json() as { count: number };
+  return json({ totalDiscovered: data.count });
 }

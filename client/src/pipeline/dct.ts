@@ -1,17 +1,15 @@
 import { GRID_SIZE } from 'shape-research-shared';
 
-const DCT_SIZE = GRID_SIZE; // Use full 8×8 block for 64-bit hash
-
 /**
  * Compute 2D Type-II DCT of an 8×8 grid.
  * Extract coefficients, threshold at median to produce a 64-bit hash.
  */
 export function dctHash(raster: number[]): string {
-  // Compute 2D DCT coefficients for the full 8×8 block
+  // Compute full 8×8 DCT coefficients (64 total)
   const coeffs: number[] = [];
 
-  for (let u = 0; u < DCT_SIZE; u++) {
-    for (let v = 0; v < DCT_SIZE; v++) {
+  for (let u = 0; u < GRID_SIZE; u++) {
+    for (let v = 0; v < GRID_SIZE; v++) {
       let sum = 0;
       for (let x = 0; x < GRID_SIZE; x++) {
         for (let y = 0; y < GRID_SIZE; y++) {

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import ProgressBar from '../components/ProgressBar';
 import { getStats } from '../api/client';
 
+// Upper bound estimate for distinct canonical shapes on an 8×8 binary grid
+// under dihedral symmetry (4 rotations × 2 reflections). The true count of
+// connected polyominoes is much smaller, but this serves as a progress ceiling.
 const ESTIMATED_TOTAL = 10_000_000;
 
 export default function StatsPage() {

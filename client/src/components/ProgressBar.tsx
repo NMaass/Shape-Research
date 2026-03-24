@@ -6,7 +6,7 @@ export default function ProgressBar({ fraction }: ProgressBarProps) {
   return (
     <div style={{
       width: '100%',
-      maxWidth: '400px',
+      maxWidth: '480px',
       height: '3px',
       background: '#eee',
       borderRadius: '1.5px',
