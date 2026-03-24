@@ -76,24 +76,63 @@ export function findFirstSelfIntersection(
   return null;
 }
 
+export interface FullIntersectionResult extends IntersectionResult {
+  /** Index of the later segment */
+  secondSegmentIndex: number;
+}
+
+/**
+ * Check ALL segment pairs in the stroke for any self-intersection.
+ * Skips adjacent segments (which share an endpoint).
+ * Returns the first intersection found, or null.
+ */
+export function findAnySelfIntersection(
+  points: Point[],
+): FullIntersectionResult | null {
+  const n = points.length;
+  if (n < 4) return null;
+
+  for (let i = 0; i < n - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+
+    // Skip adjacent segment (j = i+1 shares endpoint b)
+    for (let j = i + 2; j < n - 1; j++) {
+      const result = segmentIntersection(a, b, points[j], points[j + 1]);
+      if (result) {
+        return {
+          point: result.point,
+          segmentIndex: i,
+          t: result.t,
+          secondSegmentIndex: j,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
 /**
  * Trim the stroke to the closed loop formed at the intersection.
- * The loop runs from the intersection point along the stroke to the
- * intersection point on the newest segment.
+ * The loop runs from the intersection point on the earlier segment,
+ * through intermediate points, up to the later segment's start,
+ * and closes back at the intersection point.
+ *
+ * When `endSegmentIndex` is provided (from findAnySelfIntersection),
+ * the loop ends at that segment rather than the last segment.
  */
 export function trimToLoop(
   points: Point[],
   intersection: IntersectionResult,
+  endSegmentIndex?: number,
 ): Point[] {
-  const { point, segmentIndex, t } = intersection;
+  const { point, segmentIndex } = intersection;
+  const end = endSegmentIndex ?? points.length - 2;
 
-  // The loop starts at the intersection point on the earlier segment
-  // and runs through all subsequent points to the end of the stroke
-  // (where the newest segment meets the earlier one).
   const loop: Point[] = [point];
 
-  // Add all points from segmentIndex+1 to n-2 (the start of the newest segment)
-  for (let i = segmentIndex + 1; i < points.length - 1; i++) {
+  for (let i = segmentIndex + 1; i <= end; i++) {
     loop.push(points[i]);
   }
 

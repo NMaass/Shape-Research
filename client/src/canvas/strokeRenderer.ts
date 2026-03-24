@@ -1,7 +1,7 @@
 import type { Point } from 'shape-research-shared';
 
 const STROKE_COLOR = '#111';
-const STROKE_WIDTH = 1.5;
+const STROKE_WIDTH = 3;
 const FADE_DURATION = 500;
 
 export function drawStroke(

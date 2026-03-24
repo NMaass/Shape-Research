@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
 import type { Point } from 'shape-research-shared';
-import { findFirstSelfIntersection, trimToLoop } from './intersection';
+import { findFirstSelfIntersection, findAnySelfIntersection, trimToLoop } from './intersection';
 
 interface UsePointerStrokeOptions {
   onStrokeUpdate: (points: Point[]) => void;
@@ -61,11 +61,19 @@ export function usePointerStroke({
     activeRef.current = false;
 
     if (!closedRef.current) {
-      onStrokeEnd([...pointsRef.current]);
+      // Check for any self-intersection in the complete stroke
+      const intersection = findAnySelfIntersection(pointsRef.current);
+      if (intersection) {
+        closedRef.current = true;
+        const loop = trimToLoop(pointsRef.current, intersection, intersection.secondSegmentIndex);
+        onLoopClosed(loop);
+      } else {
+        onStrokeEnd([...pointsRef.current]);
+      }
     }
 
     pointsRef.current = [];
-  }, [onStrokeEnd]);
+  }, [onStrokeEnd, onLoopClosed]);
 
   return {
     handlePointerDown,
