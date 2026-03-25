@@ -92,7 +92,8 @@ export function detectCorners(points: Point[]): number[] {
   if (n < 8) return [];
 
   // Window size for computing turning angle (adaptive to shape size)
-  const window = Math.max(2, Math.floor(n * 0.04));
+  // Larger window = more smoothing = fewer spurious corners from noise
+  const window = Math.max(3, Math.floor(n * 0.06));
 
   // Compute turning angles
   const angles: number[] = [];
@@ -100,8 +101,8 @@ export function detectCorners(points: Point[]): number[] {
     angles.push(turningAngle(points, i, window));
   }
 
-  // Threshold: consider a point a corner if its turning angle is > 20°
-  const threshold = 20;
+  // Threshold: must turn > 30° to be a corner (filters out freehand wobble)
+  const threshold = 30;
 
   // Find peaks above threshold with non-maximum suppression
   const minSep = Math.max(5, Math.floor(n * 0.10));
@@ -268,11 +269,24 @@ function isCirclelike(points: Point[]): boolean {
 }
 
 export function fitShape(loopPoints: Point[]): FitResult {
-  // Detect corners first
+  // Always detect corners
   const corners = detectCorners(loopPoints);
 
-  // If too few corners, or many corners but shape is circle-like, → circle/ellipse
-  if (corners.length < 3 || (corners.length > 6 && isCirclelike(loopPoints))) {
+  // Determine the strongest turning angle among detected corners
+  const n = loopPoints.length - 1;
+  const window = Math.max(3, Math.floor(n * 0.06));
+  let maxCornerAngle = 0;
+  for (const ci of corners) {
+    const ta = turningAngle(loopPoints, ci, window);
+    if (ta > maxCornerAngle) maxCornerAngle = ta;
+  }
+
+  // Circle if: too few corners, OR radius-uniform with only weak corners.
+  // Strong corners (>40° turning) override circle-likeness — a hexagon has
+  // uniform radius but sharp turns at vertices.
+  const circlelike = isCirclelike(loopPoints) && maxCornerAngle < 40;
+
+  if (circlelike || corners.length < 3) {
     // For circles, build drawn vertices from a fitted ellipse
     const n = loopPoints.length - 1;
     let cx = 0, cy = 0;
