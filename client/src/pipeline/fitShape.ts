@@ -22,10 +22,10 @@ export interface FitResult {
 }
 
 // --- Quantization parameters ---
-const ANGLE_QUANTUM = 15;    // degrees
-const RATIO_QUANTUM = 0.1;
+const ANGLE_QUANTUM = 30;    // degrees — coarse enough that freehand ~90° always rounds to 90°
+const RATIO_QUANTUM = 0.2;   // 5 buckets (0.2, 0.4, 0.6, 0.8, 1.0)
 const BULGE_QUANTUM = 0.15;
-const BULGE_STRAIGHT_THRESHOLD = 0.08;
+const BULGE_STRAIGHT_THRESHOLD = 0.1;
 
 // --- Corner detection ---
 

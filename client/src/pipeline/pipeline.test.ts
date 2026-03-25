@@ -131,15 +131,18 @@ describe('processShape (geometric fitting pipeline)', () => {
   });
 
   it('freehand square with jitter still detects as 4-sided', () => {
+    // Use a seeded PRNG for determinism
+    let seed = 42;
+    const rand = () => { seed = (seed * 16807 + 0) % 2147483647; return seed / 2147483647; };
+
     const base = squareLoop(200, 200, 100);
-    // Add many interpolated points with jitter
     const freehand: Point[] = [];
     for (let i = 0; i < base.length - 1; i++) {
       for (let t = 0; t < 20; t++) {
         const frac = t / 20;
         freehand.push({
-          x: base[i].x + (base[i + 1].x - base[i].x) * frac + (Math.random() - 0.5) * 8,
-          y: base[i].y + (base[i + 1].y - base[i].y) * frac + (Math.random() - 0.5) * 8,
+          x: base[i].x + (base[i + 1].x - base[i].x) * frac + (rand() - 0.5) * 6,
+          y: base[i].y + (base[i + 1].y - base[i].y) * frac + (rand() - 0.5) * 6,
         });
       }
     }

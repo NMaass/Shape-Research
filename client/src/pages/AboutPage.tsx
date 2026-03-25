@@ -18,7 +18,7 @@ export default function AboutPage() {
           each shape you draw is analyzed geometrically — we detect corners,
           measure the angles between edges, compare edge length ratios, and
           classify curves. freehand wobble is absorbed by quantizing angles to
-          15° steps and edge ratios to 10% steps, so your messy square becomes
+          30° steps and edge ratios to 20% steps, so your messy square becomes
           a clean four-sided shape with right angles.
         </p>
         <p style={bodyTextStyle}>
