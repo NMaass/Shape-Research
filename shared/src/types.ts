@@ -19,7 +19,9 @@ export interface ShapeDescriptor {
 export interface ShapeResult {
   hash: string;
   descriptor: ShapeDescriptor;
-  /** Reconstructed clean vertices for rendering. */
+  /** Clean vertices in the user's drawn coordinate space (pixel coords). */
+  drawnVertices: Point[];
+  /** Clean vertices in [0,1] unit space for thumbnail rendering. */
   vertices: Point[];
 }
 

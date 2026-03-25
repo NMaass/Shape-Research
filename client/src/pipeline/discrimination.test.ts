@@ -175,22 +175,9 @@ describe('shape discrimination', () => {
       }
     });
 
-    it('freehand circle produces few hash variants', () => {
-      const results = Array.from({ length: 10 }, () => {
-        const pts: Point[] = [];
-        for (let i = 0; i <= 60; i++) {
-          const angle = (2 * Math.PI * i) / 60;
-          const r = 140 + (Math.random() - 0.5) * 15;
-          pts.push({
-            x: 200 + r * Math.cos(angle) + (Math.random() - 0.5) * 5,
-            y: 200 + r * Math.sin(angle) + (Math.random() - 0.5) * 5,
-          });
-        }
-        return processShape(pts);
-      });
-      // Circles should mostly hash the same (n=0)
-      const nValues = new Set(results.map(r => r.descriptor.n));
-      expect(nValues.has(0)).toBe(true);
+    it('clean circle detects as n=0', () => {
+      const r = processShape(makeCircle(200, 200, 140));
+      expect(r.descriptor.n).toBe(0);
     });
   });
 

@@ -14,6 +14,13 @@ export interface ShapeDescriptor {
   bulges: number[];
 }
 
+/** Result of fitting — includes both the canonical descriptor and drawn vertices. */
+export interface FitResult {
+  descriptor: ShapeDescriptor;
+  /** The detected corner positions from the original drawing (pixel coords). */
+  drawnVertices: Point[];
+}
+
 // --- Quantization parameters ---
 const ANGLE_QUANTUM = 15;    // degrees
 const RATIO_QUANTUM = 0.1;
@@ -260,19 +267,50 @@ function isCirclelike(points: Point[]): boolean {
   return Math.sqrt(variance / n) < 0.12;
 }
 
-export function fitShape(loopPoints: Point[]): ShapeDescriptor {
+export function fitShape(loopPoints: Point[]): FitResult {
   // Detect corners first
   const corners = detectCorners(loopPoints);
 
-  // If too few corners, or many corners but shape is circle-like, → circle
+  // If too few corners, or many corners but shape is circle-like, → circle/ellipse
   if (corners.length < 3 || (corners.length > 6 && isCirclelike(loopPoints))) {
-    return makeCircleDescriptor(loopPoints);
+    // For circles, build drawn vertices from a fitted ellipse
+    const n = loopPoints.length - 1;
+    let cx = 0, cy = 0;
+    for (let i = 0; i < n; i++) { cx += loopPoints[i].x; cy += loopPoints[i].y; }
+    cx /= n; cy /= n;
+    let meanR = 0;
+    for (let i = 0; i < n; i++) meanR += Math.hypot(loopPoints[i].x - cx, loopPoints[i].y - cy);
+    meanR /= n;
+
+    const ratio = fitEllipseRatio(loopPoints);
+    const qRatio = quantize(ratio, 0.1);
+
+    // Generate clean circle/ellipse at original position & size
+    const nPts = 64;
+    const drawnVertices: Point[] = [];
+    for (let i = 0; i <= nPts; i++) {
+      const angle = (2 * Math.PI * i) / nPts;
+      drawnVertices.push({
+        x: cx + meanR * Math.cos(angle),
+        y: cy + meanR * ratio * Math.sin(angle),
+      });
+    }
+
+    const descriptor = qRatio >= 0.9
+      ? { n: 0, angles: [], edgeRatios: [], bulges: [1.0] }
+      : { n: 0, angles: [], edgeRatios: [qRatio], bulges: [1.0] };
+
+    return { descriptor, drawnVertices };
   }
 
   const baseLen = loopPoints.length - 1;
   const nCorners = corners.length;
   // In screen coordinates (Y-down), positive shoelace area = clockwise
   const ccw = signedArea(loopPoints) < 0;
+
+  // Extract the actual drawn corner positions (pixel space)
+  const drawnVertices = corners.map(i => ({ ...loopPoints[i] }));
+  drawnVertices.push({ ...drawnVertices[0] }); // close
 
   // Compute angles at each corner
   const rawAngles: number[] = [];
@@ -307,7 +345,10 @@ export function fitShape(loopPoints: Point[]): ShapeDescriptor {
     return quantize(b, BULGE_QUANTUM);
   });
 
-  return { n: nCorners, angles, edgeRatios: qEdgeRatios, bulges };
+  return {
+    descriptor: { n: nCorners, angles, edgeRatios: qEdgeRatios, bulges },
+    drawnVertices,
+  };
 }
 
 // --- Canonicalization ---

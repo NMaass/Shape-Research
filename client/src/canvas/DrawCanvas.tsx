@@ -107,7 +107,7 @@ export default function DrawCanvas({ onResult }: DrawCanvasProps) {
       const msg = err instanceof Error ? err.message : 'unknown error';
       showResult({ error: `server error: ${msg}` }, ERROR_DISPLAY_MS);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawCleanShape(ctx, shapeResult.vertices);
+      drawCleanShape(ctx, shapeResult.drawnVertices);
       console.error('discovery error:', err);
       return;
     }
@@ -121,7 +121,7 @@ export default function DrawCanvas({ onResult }: DrawCanvasProps) {
     const stats = recordDiscovery(discovery.isNew);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawCleanShape(ctx, shapeResult.vertices);
+    drawCleanShape(ctx, shapeResult.drawnVertices);
 
     showResult({ discovery, stats }, RESULT_DISPLAY_MS);
   }, [clearCanvas, showResult, onResult]);

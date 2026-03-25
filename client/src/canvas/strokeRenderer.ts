@@ -78,8 +78,9 @@ export function getBBox(points: Point[], padding = 8): BBox {
 }
 
 /**
- * Draw a clean geometric shape (reconstructed vertices in [0,1] space)
- * centered in the canvas.
+ * Draw a clean geometric shape from pixel-space vertices.
+ * The vertices are already in the user's drawn coordinate space
+ * (same scale, position, and rotation as their drawing).
  */
 export function drawCleanShape(
   ctx: CanvasRenderingContext2D,
@@ -88,22 +89,13 @@ export function drawCleanShape(
 ): void {
   if (vertices.length < 2) return;
 
-  const canvasW = ctx.canvas.width;
-  const canvasH = ctx.canvas.height;
-
-  // Vertices are in [0,1] unit space. Scale to fit canvas with margin.
-  const margin = 40;
-  const available = Math.min(canvasW, canvasH) - margin * 2;
-  const offsetX = (canvasW - available) / 2;
-  const offsetY = (canvasH - available) / 2;
-
   ctx.save();
   ctx.globalAlpha = alpha;
 
   ctx.beginPath();
-  ctx.moveTo(offsetX + vertices[0].x * available, offsetY + vertices[0].y * available);
+  ctx.moveTo(vertices[0].x, vertices[0].y);
   for (let i = 1; i < vertices.length; i++) {
-    ctx.lineTo(offsetX + vertices[i].x * available, offsetY + vertices[i].y * available);
+    ctx.lineTo(vertices[i].x, vertices[i].y);
   }
   ctx.closePath();
 
