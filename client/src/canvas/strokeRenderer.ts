@@ -1,4 +1,5 @@
 import type { Point } from 'shape-research-shared';
+import { GRID_SIZE } from 'shape-research-shared';
 
 const STROKE_COLOR = '#111';
 const STROKE_WIDTH = 3;
@@ -43,6 +44,69 @@ export function drawLoop(
   alpha = 1,
 ): void {
   drawPath(ctx, points, true, alpha);
+}
+
+export interface BBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Compute the bounding box of a set of points, with optional padding.
+ */
+export function getBBox(points: Point[], padding = 8): BBox {
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return {
+    x: minX - padding,
+    y: minY - padding,
+    width: maxX - minX + padding * 2,
+    height: maxY - minY + padding * 2,
+  };
+}
+
+/**
+ * Draw an 8×8 binary raster fitted into the given bounding box on the canvas.
+ * Renders filled cells as squares, preserving aspect ratio and centering.
+ */
+export function drawRaster(
+  ctx: CanvasRenderingContext2D,
+  raster: number[],
+  bbox: BBox,
+  alpha = 1,
+): void {
+  const cellSize = Math.min(bbox.width, bbox.height) / GRID_SIZE;
+  const totalW = cellSize * GRID_SIZE;
+  const totalH = cellSize * GRID_SIZE;
+  const offsetX = bbox.x + (bbox.width - totalW) / 2;
+  const offsetY = bbox.y + (bbox.height - totalH) / 2;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = STROKE_COLOR;
+
+  for (let row = 0; row < GRID_SIZE; row++) {
+    for (let col = 0; col < GRID_SIZE; col++) {
+      if (raster[row * GRID_SIZE + col]) {
+        ctx.fillRect(
+          offsetX + col * cellSize,
+          offsetY + row * cellSize,
+          cellSize,
+          cellSize,
+        );
+      }
+    }
+  }
+
+  ctx.restore();
 }
 
 /**

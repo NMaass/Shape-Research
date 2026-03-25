@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
 import type { Point } from 'shape-research-shared';
-import { findFirstSelfIntersection, findAnySelfIntersection, trimToLoop } from './intersection';
+import { findAnySelfIntersection, trimToLoop } from './intersection';
 
 interface UsePointerStrokeOptions {
   onStrokeUpdate: (points: Point[]) => void;
@@ -17,19 +17,17 @@ export function usePointerStroke({
 }: UsePointerStrokeOptions) {
   const pointsRef = useRef<Point[]>([]);
   const activeRef = useRef(false);
-  const closedRef = useRef(false);
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     canvas.setPointerCapture(e.pointerId);
     pointsRef.current = [{ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY }];
     activeRef.current = true;
-    closedRef.current = false;
     onStrokeUpdate(pointsRef.current);
   }, [onStrokeUpdate]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!activeRef.current || closedRef.current) return;
+    if (!activeRef.current) return;
 
     const points = pointsRef.current;
     const x = e.nativeEvent.offsetX;
@@ -42,34 +40,19 @@ export function usePointerStroke({
     if (dx * dx + dy * dy < minDistance * minDistance) return;
 
     points.push({ x, y });
-
-    // Check for self-intersection
-    const intersection = findFirstSelfIntersection(points);
-    if (intersection) {
-      closedRef.current = true;
-      activeRef.current = false;
-      const loop = trimToLoop(points, intersection);
-      onLoopClosed(loop);
-      return;
-    }
-
     onStrokeUpdate([...points]);
-  }, [onStrokeUpdate, onLoopClosed, minDistance]);
+  }, [onStrokeUpdate, minDistance]);
 
   const handlePointerUp = useCallback((_e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!activeRef.current) return;
     activeRef.current = false;
 
-    if (!closedRef.current) {
-      // Check for any self-intersection in the complete stroke
-      const intersection = findAnySelfIntersection(pointsRef.current);
-      if (intersection) {
-        closedRef.current = true;
-        const loop = trimToLoop(pointsRef.current, intersection, intersection.secondSegmentIndex);
-        onLoopClosed(loop);
-      } else {
-        onStrokeEnd([...pointsRef.current]);
-      }
+    const intersection = findAnySelfIntersection(pointsRef.current);
+    if (intersection) {
+      const loop = trimToLoop(pointsRef.current, intersection, intersection.secondSegmentIndex);
+      onLoopClosed(loop);
+    } else {
+      onStrokeEnd([...pointsRef.current]);
     }
 
     pointsRef.current = [];

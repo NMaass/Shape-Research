@@ -1,7 +1,8 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import type { Point } from 'shape-research-shared';
 import { usePointerStroke } from './usePointerStroke';
-import { drawStroke, drawLoop, fadeStroke } from './strokeRenderer';
+import { drawStroke, drawLoop, drawRaster, getBBox, fadeStroke } from './strokeRenderer';
+import type { BBox } from './strokeRenderer';
 import { processShape } from '../pipeline/pipeline';
 import { discoverShape } from '../api/client';
 import { saveShape } from '../store/localStorage';
@@ -79,9 +80,12 @@ export default function DrawCanvas() {
     // Track this request so stale async results are discarded
     const thisRequest = ++requestIdRef.current;
 
-    // Draw the closed loop
+    // Draw the closed loop — it stays visible while we process
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawLoop(ctx, loop);
+
+    // Remember the bounding box of the user's drawing
+    const bbox: BBox = getBBox(loop);
 
     try {
       // Process through pipeline
@@ -97,6 +101,10 @@ export default function DrawCanvas() {
       if (discovery.isNew) {
         saveShape(shapeResult.hash, shapeResult.raster);
       }
+
+      // Replace the drawn loop with the identified raster at the same position
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawRaster(ctx, shapeResult.drawnRaster, bbox);
 
       // Show result
       setResult({
