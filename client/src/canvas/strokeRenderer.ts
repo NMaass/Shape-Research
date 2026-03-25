@@ -138,6 +138,24 @@ export function drawResultText(
 }
 
 /**
+ * Draw an error message centered in the canvas.
+ */
+export function drawErrorText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  canvasWidth: number,
+  canvasHeight: number,
+): void {
+  ctx.save();
+  ctx.font = '13px "Courier New", Courier, monospace';
+  ctx.fillStyle = '#c44';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvasWidth / 2, canvasHeight / 2);
+  ctx.restore();
+}
+
+/**
  * Fade a stroke out over FADE_DURATION ms, clearing and redrawing each frame.
  * Calls onComplete when done. Returns a cancel function.
  */

@@ -13,16 +13,18 @@ type LoadState = 'loading' | 'error' | 'ready';
 export default function StatsPage() {
   const [discovered, setDiscovered] = useState(0);
   const [state, setState] = useState<LoadState>('loading');
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    getStats().then(result => {
-      if (result) {
+    getStats()
+      .then(result => {
         setDiscovered(result.totalDiscovered);
         setState('ready');
-      } else {
+      })
+      .catch(err => {
+        setErrorMsg(err instanceof Error ? err.message : 'unknown error');
         setState('error');
-      }
-    });
+      });
   }, []);
 
   if (state === 'loading') {
@@ -30,7 +32,11 @@ export default function StatsPage() {
   }
 
   if (state === 'error') {
-    return <div style={emptyStateStyle}>could not reach server</div>;
+    return (
+      <div style={emptyStateStyle}>
+        <span style={{ color: '#c44' }}>could not reach server: {errorMsg}</span>
+      </div>
+    );
   }
 
   const fraction = discovered / ESTIMATED_TOTAL;

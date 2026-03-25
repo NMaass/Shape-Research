@@ -55,12 +55,15 @@ export function rasterToSmoothedPath(raster: number[]): string {
     if (pts.length < 3) continue;
 
     // Simplify: collapse staircase steps into clean diagonals
-    const simplified = douglasPeuckerClosed(pts, 0.7);
+    const simplified = douglasPeuckerClosed(pts, 0.71);
 
     if (simplified.length < 3) continue;
 
-    // Draw smooth Catmull-Rom curves through the simplified vertices
-    path += catmullRomClosedPath(simplified);
+    // Resample at uniform spacing to prevent Catmull-Rom pinching
+    const resampled = resampleClosed(simplified, Math.max(simplified.length, 12));
+
+    // Draw smooth Catmull-Rom curves through the evenly-spaced vertices
+    path += catmullRomClosedPath(resampled);
   }
 
   return path;
@@ -153,14 +156,58 @@ function perpendicularDist(p: Point, a: Point, b: Point): number {
 }
 
 /**
+ * Resample a closed polygon to n evenly spaced points.
+ * Prevents Catmull-Rom pinching from uneven vertex spacing.
+ */
+function resampleClosed(points: Point[], n: number): Point[] {
+  const len = points.length;
+  // Compute cumulative arc lengths around the closed polygon
+  const cumLen: number[] = [0];
+  for (let i = 1; i <= len; i++) {
+    const a = points[(i - 1) % len];
+    const b = points[i % len];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    cumLen.push(cumLen[i - 1] + Math.sqrt(dx * dx + dy * dy));
+  }
+  const totalLen = cumLen[len];
+  if (totalLen === 0) return points;
+
+  const step = totalLen / n;
+  const result: Point[] = [];
+  let segIdx = 1;
+
+  for (let i = 0; i < n; i++) {
+    const targetLen = i * step;
+    while (segIdx < cumLen.length - 1 && cumLen[segIdx] < targetLen) segIdx++;
+    const segStart = cumLen[segIdx - 1];
+    const segEnd = cumLen[segIdx];
+    const segSpan = segEnd - segStart;
+    const t = segSpan > 0 ? (targetLen - segStart) / segSpan : 0;
+    const a = points[(segIdx - 1) % len];
+    const b = points[segIdx % len];
+    result.push({
+      x: a.x + t * (b.x - a.x),
+      y: a.y + t * (b.y - a.y),
+    });
+  }
+
+  return result;
+}
+
+/**
  * Convert a closed polygon to an SVG path using Catmull-Rom cubic
  * bezier curves. Produces one smooth continuous curve.
+ * Uses a reduced tangent scale (1/8 instead of 1/6) to prevent overshoot.
  */
 function catmullRomClosedPath(pts: Point[]): string {
   const n = pts.length;
   if (n < 3) return '';
 
   let path = `M ${r(pts[0].x)} ${r(pts[0].y)} `;
+
+  // Tangent scale: 1/6 = standard Catmull-Rom, smaller = tighter curves
+  const tangentScale = 1 / 8;
 
   for (let i = 0; i < n; i++) {
     const p0 = pts[(i - 1 + n) % n];
@@ -169,10 +216,10 @@ function catmullRomClosedPath(pts: Point[]): string {
     const p3 = pts[(i + 2) % n];
 
     // Catmull-Rom to cubic bezier control points
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    const cp1x = p1.x + (p2.x - p0.x) * tangentScale;
+    const cp1y = p1.y + (p2.y - p0.y) * tangentScale;
+    const cp2x = p2.x - (p3.x - p1.x) * tangentScale;
+    const cp2y = p2.y - (p3.y - p1.y) * tangentScale;
 
     path += `C ${r(cp1x)} ${r(cp1y)}, ${r(cp2x)} ${r(cp2y)}, ${r(p2.x)} ${r(p2.y)} `;
   }
