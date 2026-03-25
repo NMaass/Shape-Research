@@ -1,12 +1,14 @@
 import { useRef, useCallback } from 'react';
 import type { Point } from 'shape-research-shared';
-import { findFirstSelfIntersection, trimToLoop } from './intersection';
+import { findAnySelfIntersection, trimToLoop } from './intersection';
 
 interface UsePointerStrokeOptions {
   onStrokeUpdate: (points: Point[]) => void;
   onLoopClosed: (loop: Point[]) => void;
   onStrokeEnd: (points: Point[]) => void;
   minDistance?: number;
+  /** Max pixel distance between start and end to auto-close the loop */
+  snapDistance?: number;
 }
 
 export function usePointerStroke({
@@ -14,22 +16,21 @@ export function usePointerStroke({
   onLoopClosed,
   onStrokeEnd,
   minDistance = 3,
+  snapDistance = 30,
 }: UsePointerStrokeOptions) {
   const pointsRef = useRef<Point[]>([]);
   const activeRef = useRef(false);
-  const closedRef = useRef(false);
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     canvas.setPointerCapture(e.pointerId);
     pointsRef.current = [{ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY }];
     activeRef.current = true;
-    closedRef.current = false;
     onStrokeUpdate(pointsRef.current);
   }, [onStrokeUpdate]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!activeRef.current || closedRef.current) return;
+    if (!activeRef.current) return;
 
     const points = pointsRef.current;
     const x = e.nativeEvent.offsetX;
@@ -42,30 +43,43 @@ export function usePointerStroke({
     if (dx * dx + dy * dy < minDistance * minDistance) return;
 
     points.push({ x, y });
-
-    // Check for self-intersection
-    const intersection = findFirstSelfIntersection(points);
-    if (intersection) {
-      closedRef.current = true;
-      activeRef.current = false;
-      const loop = trimToLoop(points, intersection);
-      onLoopClosed(loop);
-      return;
-    }
-
     onStrokeUpdate([...points]);
-  }, [onStrokeUpdate, onLoopClosed, minDistance]);
+  }, [onStrokeUpdate, minDistance]);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+  const handlePointerUp = useCallback((_e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!activeRef.current) return;
     activeRef.current = false;
 
-    if (!closedRef.current) {
-      onStrokeEnd([...pointsRef.current]);
+    const points = pointsRef.current;
+
+    // Prefer snap-close: if the end is near the start, use the entire stroke
+    // as the loop. This preserves complex shapes (stars, etc.) that would
+    // otherwise be truncated to a small triangle at the first crossing.
+    if (points.length >= 4) {
+      const start = points[0];
+      const end = points[points.length - 1];
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      if (dx * dx + dy * dy < snapDistance * snapDistance) {
+        const loop = [...points, start];
+        onLoopClosed(loop);
+        pointsRef.current = [];
+        return;
+      }
     }
 
+    // Fall back to self-intersection detection
+    const intersection = findAnySelfIntersection(points);
+    if (intersection) {
+      const loop = trimToLoop(points, intersection, intersection.secondSegmentIndex);
+      onLoopClosed(loop);
+      pointsRef.current = [];
+      return;
+    }
+
+    onStrokeEnd([...points]);
     pointsRef.current = [];
-  }, [onStrokeEnd]);
+  }, [onStrokeEnd, onLoopClosed, snapDistance]);
 
   return {
     handlePointerDown,

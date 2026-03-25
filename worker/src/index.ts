@@ -1,5 +1,7 @@
 import { ShapeRegistry } from './durable/ShapeRegistry';
 
+const GRID_SIZE = 8;
+
 export { ShapeRegistry };
 
 export interface Env {
@@ -18,6 +20,12 @@ function json(data: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
+}
+
+function isValidRaster(raster: unknown): raster is number[] {
+  if (!Array.isArray(raster)) return false;
+  if (raster.length !== GRID_SIZE * GRID_SIZE) return false;
+  return raster.every(v => v === 0 || v === 1);
 }
 
 export default {
@@ -39,12 +47,10 @@ export default {
       if (path === '/api/stats' && request.method === 'GET') {
         return handleStats(env);
       }
-      if (path === '/api/leaderboard' && request.method === 'GET') {
-        return handleLeaderboard(env);
-      }
 
       return json({ error: 'not found' }, 404);
     } catch (err) {
+      console.error('request failed:', err);
       return json({ error: 'internal error' }, 500);
     }
   },
@@ -69,43 +75,35 @@ async function handleCheck(url: URL, env: Env): Promise<Response> {
 }
 
 async function handleDiscover(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as { hash: string; raster: number[]; user?: string };
-  if (!body.hash || !body.raster) {
-    return json({ error: 'missing hash or raster' }, 400);
+  const body = await request.json() as { hash: string; raster: unknown; user?: string };
+  if (!body.hash || !isValidRaster(body.raster)) {
+    return json({ error: 'missing or invalid hash/raster' }, 400);
   }
 
   const registry = await getRegistry(env);
   const res = await registry.fetch(new Request('http://do/discover', {
     method: 'POST',
-    body: JSON.stringify(body),
+    body: JSON.stringify({ hash: body.hash, raster: body.raster, user: body.user }),
   }));
-  const data = await res.json();
+  const data = await res.json() as { isNew: boolean; discoveryNumber?: number };
 
-  // If new discovery, also write metadata to KV
-  if ((data as { isNew: boolean }).isNew) {
+  // If new discovery, write metadata to KV
+  if (data.isNew) {
     await env.SHAPES.put(`shape:${body.hash}`, JSON.stringify({
       hash: body.hash,
       raster: body.raster,
       discoverer: body.user || 'anonymous',
       timestamp: Date.now(),
     }));
-
-    // Update stats counter
-    const countStr = await env.SHAPES.get('stats:totalDiscovered');
-    const count = countStr ? parseInt(countStr, 10) : 0;
-    await env.SHAPES.put('stats:totalDiscovered', String(count + 1));
   }
 
   return json(data);
 }
 
 async function handleStats(env: Env): Promise<Response> {
-  const countStr = await env.SHAPES.get('stats:totalDiscovered');
-  return json({ totalDiscovered: countStr ? parseInt(countStr, 10) : 0 });
-}
-
-async function handleLeaderboard(env: Env): Promise<Response> {
-  // Simple implementation: scan KV for discoverers
-  // In production, maintain a sorted leaderboard in KV
-  return json([]);
+  // Read count from the DO (source of truth) instead of KV
+  const registry = await getRegistry(env);
+  const res = await registry.fetch(new Request('http://do/count'));
+  const data = await res.json() as { count: number };
+  return json({ totalDiscovered: data.count });
 }

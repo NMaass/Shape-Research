@@ -1,35 +1,14 @@
-const API_BASE = '/api';
+import type { DiscoverResult, StatsResult } from 'shape-research-shared';
 
-export interface CheckResult {
-  isNew: boolean;
-  discoveryNumber?: number;
-  firstDiscovered?: number;
-  timesSubmitted?: number;
-}
+const API_BASE = import.meta.env.DEV
+  ? '/api'
+  : 'https://shape-research-api.nicholasmaassen.workers.dev/api';
 
-export interface DiscoverResult {
-  isNew: boolean;
-  discoveryNumber?: number;
-}
-
-export interface StatsResult {
-  totalDiscovered: number;
-}
-
-export interface LeaderboardEntry {
-  name: string;
-  count: number;
-  recentShapes: number[][];
-}
-
-export async function checkShape(hash: string): Promise<CheckResult> {
-  try {
-    const res = await fetch(`${API_BASE}/check?hash=${encodeURIComponent(hash)}`);
-    if (res.ok) return res.json();
-  } catch {
-    // Server unavailable — fall through to stub
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
   }
-  return { isNew: true };
 }
 
 export async function discoverShape(
@@ -37,35 +16,22 @@ export async function discoverShape(
   raster: number[],
   user?: string,
 ): Promise<DiscoverResult> {
-  try {
-    const res = await fetch(`${API_BASE}/discover`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hash, raster, user }),
-    });
-    if (res.ok) return res.json();
-  } catch {
-    // Server unavailable — fall through to stub
+  const res = await fetch(`${API_BASE}/discover`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hash, raster, user }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new ApiError(res.status, body || `server error ${res.status}`);
   }
-  return { isNew: true };
+  return res.json();
 }
 
 export async function getStats(): Promise<StatsResult> {
-  try {
-    const res = await fetch(`${API_BASE}/stats`);
-    if (res.ok) return res.json();
-  } catch {
-    // Server unavailable
+  const res = await fetch(`${API_BASE}/stats`);
+  if (!res.ok) {
+    throw new ApiError(res.status, `server error ${res.status}`);
   }
-  return { totalDiscovered: 0 };
-}
-
-export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  try {
-    const res = await fetch(`${API_BASE}/leaderboard`);
-    if (res.ok) return res.json();
-  } catch {
-    // Server unavailable
-  }
-  return [];
+  return res.json();
 }

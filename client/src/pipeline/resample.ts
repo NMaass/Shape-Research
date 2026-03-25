@@ -3,7 +3,7 @@ import type { Point } from 'shape-research-shared';
 /**
  * Arc-length resample a polyline to N evenly spaced points.
  */
-export function resample(points: Point[], n: number = 64): Point[] {
+export function resample(points: Point[], n: number): Point[] {
   if (points.length < 2) return points;
 
   // Compute cumulative arc lengths

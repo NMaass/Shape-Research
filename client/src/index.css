@@ -1,4 +1,4 @@
-* {
+:where(*) {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -7,19 +7,20 @@
 html, body, #root {
   height: 100%;
   width: 100%;
-  overflow: hidden;
 }
 
 body {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Courier New', Courier, monospace;
   background: #fff;
-  color: #111;
+  color: #222;
   text-transform: lowercase;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
-  color: #111;
+  color: #222;
   text-decoration: none;
 }
 

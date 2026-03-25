@@ -1,6 +1,6 @@
 import type { Point } from 'shape-research-shared';
-
-const GRID_SIZE = 8;
+import { GRID_SIZE } from 'shape-research-shared';
+import { EPSILON } from '../math';
 
 /**
  * Test if a point is inside a polygon using ray casting.
@@ -45,7 +45,7 @@ function segmentIntersectsCell(
 
   for (const [cx, cy, dx, dy] of edges) {
     const denom = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
-    if (Math.abs(denom) < 1e-10) continue;
+    if (Math.abs(denom) < EPSILON) continue;
 
     const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / denom;
     const u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / denom;
