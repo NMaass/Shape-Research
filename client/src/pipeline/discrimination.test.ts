@@ -58,6 +58,15 @@ function makeHexagon(cx: number, cy: number, r: number): Point[] {
   return pts;
 }
 
+function makeOctagon(cx: number, cy: number, r: number): Point[] {
+  const pts: Point[] = [];
+  for (let i = 0; i <= 8; i++) {
+    const angle = (2 * Math.PI * i) / 8;
+    pts.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+  }
+  return pts;
+}
+
 // --- Helpers ---
 
 function jitter(pts: Point[], amount: number): Point[] {
@@ -121,6 +130,11 @@ describe('shape discrimination', () => {
     it('detects hexagon as 6-sided', () => {
       const r = processShape(makeHexagon(200, 200, 100));
       expect(r.descriptor.n).toBe(6);
+    });
+
+    it('detects octagon as 8-sided (not circle)', () => {
+      const r = processShape(interpolateEdges(makeOctagon(200, 200, 100), 15));
+      expect(r.descriptor.n).toBe(8);
     });
   });
 
@@ -209,6 +223,18 @@ describe('shape discrimination', () => {
       const pent = processShape(makePentagon(200, 200, 100));
       const hex = processShape(makeHexagon(200, 200, 100));
       expect(pent.hash).not.toBe(hex.hash);
+    });
+
+    it('hexagon vs octagon', () => {
+      const hex = processShape(interpolateEdges(makeHexagon(200, 200, 100), 20));
+      const oct = processShape(interpolateEdges(makeOctagon(200, 200, 100), 15));
+      expect(hex.hash).not.toBe(oct.hash);
+    });
+
+    it('octagon vs circle', () => {
+      const oct = processShape(interpolateEdges(makeOctagon(200, 200, 100), 15));
+      const circ = processShape(makeCircle(200, 200, 100));
+      expect(oct.hash).not.toBe(circ.hash);
     });
   });
 });

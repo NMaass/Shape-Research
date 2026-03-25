@@ -22,7 +22,7 @@ export interface FitResult {
 }
 
 // --- Quantization parameters ---
-const ANGLE_QUANTUM = 30;    // degrees — coarse enough that freehand ~90° always rounds to 90°
+const ANGLE_QUANTUM = 15;    // degrees — fine enough to distinguish 60/75/90/105/120 while still tolerant of freehand wobble
 const RATIO_QUANTUM = 0.2;   // 5 buckets (0.2, 0.4, 0.6, 0.8, 1.0)
 const BULGE_QUANTUM = 0.15;
 const BULGE_STRAIGHT_THRESHOLD = 0.1;
@@ -216,7 +216,12 @@ function quantize(value: number, step: number): number {
 
 // --- Ellipse fitting ---
 
-function fitEllipseRatio(points: Point[]): number {
+interface EllipseFit {
+  ratio: number;       // minor/major axis ratio (0-1)
+  angle: number;       // rotation angle of major axis in radians
+}
+
+function fitEllipse(points: Point[]): EllipseFit {
   const n = points.length - 1;
   let cx = 0, cy = 0;
   for (let i = 0; i < n; i++) { cx += points[i].x; cy += points[i].y; }
@@ -234,12 +239,18 @@ function fitEllipseRatio(points: Point[]): number {
   const disc = Math.sqrt(Math.max(0, trace * trace / 4 - det));
   const l1 = trace / 2 + disc;
   const l2 = trace / 2 - disc;
-  if (l1 === 0) return 1;
-  return Math.sqrt(Math.max(l2, 0) / l1);
+
+  // Angle of major axis eigenvector
+  const angle = cxy !== 0
+    ? Math.atan2(l1 - cxx, cxy)
+    : (cyy > cxx ? Math.PI / 2 : 0);
+
+  if (l1 === 0) return { ratio: 1, angle: 0 };
+  return { ratio: Math.sqrt(Math.max(l2, 0) / l1), angle };
 }
 
 function makeCircleDescriptor(points: Point[]): ShapeDescriptor {
-  const ratio = fitEllipseRatio(points);
+  const { ratio } = fitEllipse(points);
   const qRatio = quantize(ratio, 0.1);
   if (qRatio >= 0.9) {
     return { n: 0, angles: [], edgeRatios: [], bulges: [1.0] };
@@ -284,8 +295,10 @@ export function fitShape(loopPoints: Point[]): FitResult {
 
   // Circle if: too few corners, OR radius-uniform with only weak corners.
   // Real polygon corners are sharp: hexagon ~60°, pentagon ~72°, square ~90°.
-  // Freehand circle noise rarely exceeds 50°, so use that as the cutoff.
-  const circlelike = isCirclelike(loopPoints) && maxCornerAngle < 50;
+  // Freehand circle noise rarely exceeds 40°, so use that as the cutoff.
+  // Also require fewer than 3 strong corners — regular polygons (octagon etc.)
+  // have low radius variance but clearly detectable corners.
+  const circlelike = isCirclelike(loopPoints) && maxCornerAngle < 40 && corners.length < 3;
 
   if (circlelike || corners.length < 3) {
     // For circles, build drawn vertices from a fitted ellipse
@@ -297,17 +310,22 @@ export function fitShape(loopPoints: Point[]): FitResult {
     for (let i = 0; i < n; i++) meanR += Math.hypot(loopPoints[i].x - cx, loopPoints[i].y - cy);
     meanR /= n;
 
-    const ratio = fitEllipseRatio(loopPoints);
+    const { ratio, angle: ellipseAngle } = fitEllipse(loopPoints);
     const qRatio = quantize(ratio, 0.1);
 
-    // Generate clean circle/ellipse at original position & size
+    // Generate clean circle/ellipse at original position, size, AND rotation
+    const cosA = Math.cos(ellipseAngle);
+    const sinA = Math.sin(ellipseAngle);
     const nPts = 64;
     const drawnVertices: Point[] = [];
     for (let i = 0; i <= nPts; i++) {
-      const angle = (2 * Math.PI * i) / nPts;
+      const t = (2 * Math.PI * i) / nPts;
+      // Ellipse in local frame, then rotate to match drawn orientation
+      const lx = meanR * Math.cos(t);
+      const ly = meanR * ratio * Math.sin(t);
       drawnVertices.push({
-        x: cx + meanR * Math.cos(angle),
-        y: cy + meanR * ratio * Math.sin(angle),
+        x: cx + lx * cosA - ly * sinA,
+        y: cy + lx * sinA + ly * cosA,
       });
     }
 
