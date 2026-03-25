@@ -59,11 +59,6 @@ export class ShapeRegistry implements DurableObject {
       return Response.json({ count });
     }
 
-    if (url.pathname === '/reset') {
-      await this.state.storage.deleteAll();
-      return Response.json({ ok: true });
-    }
-
     return Response.json({ error: 'unknown path' }, { status: 404 });
   }
 }

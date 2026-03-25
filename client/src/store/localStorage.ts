@@ -3,7 +3,21 @@ import type { ShapeDescriptor, Point } from 'shape-research-shared';
 
 const STORAGE_KEY = 'shape-research-discoveries';
 const STATS_KEY = 'shape-research-personal-stats';
+const VERSION_KEY = 'shape-research-version';
+const CURRENT_VERSION = 2; // bump when hash algorithm changes
 const MAX_STORED_SHAPES = 500;
+
+// Clear stale data when the hash algorithm changes
+(function migrateStorage() {
+  try {
+    const v = Number(localStorage.getItem(VERSION_KEY));
+    if (v !== CURRENT_VERSION) {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STATS_KEY);
+      localStorage.setItem(VERSION_KEY, String(CURRENT_VERSION));
+    }
+  } catch { /* ignore */ }
+})();
 
 export interface StoredShape {
   hash: string;
