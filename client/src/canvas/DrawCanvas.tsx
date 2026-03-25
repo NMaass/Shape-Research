@@ -115,7 +115,7 @@ export default function DrawCanvas({ onResult }: DrawCanvasProps) {
     if (thisRequest !== requestIdRef.current) return;
 
     if (discovery.isNew) {
-      saveShape(shapeResult.hash, shapeResult.descriptor);
+      saveShape(shapeResult.hash, shapeResult.descriptor, shapeResult.drawnVertices);
     }
 
     const stats = recordDiscovery(discovery.isNew);

@@ -39,8 +39,8 @@ export default function MyShapesPage() {
               gap: '4px',
             }}
           >
-            {shape.descriptor ? (
-              <FittedShape descriptor={shape.descriptor} size={48} />
+            {shape.vertices && shape.vertices.length > 0 ? (
+              <FittedShape vertices={shape.vertices} size={48} />
             ) : (
               <div style={{ width: 48, height: 48, background: 'var(--color-border)' }} />
             )}

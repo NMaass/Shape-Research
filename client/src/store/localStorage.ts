@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { ShapeDescriptor } from 'shape-research-shared';
+import type { ShapeDescriptor, Point } from 'shape-research-shared';
 
 const STORAGE_KEY = 'shape-research-discoveries';
 const STATS_KEY = 'shape-research-personal-stats';
@@ -8,9 +8,9 @@ const MAX_STORED_SHAPES = 500;
 export interface StoredShape {
   hash: string;
   descriptor: ShapeDescriptor;
+  /** The user's drawn vertices normalized to [0,1] unit space for thumbnails. */
+  vertices: Point[];
   timestamp: number;
-  /** @deprecated old raster format, kept for migration */
-  raster?: number[];
 }
 
 export interface PersonalStats {
@@ -67,10 +67,34 @@ export function getMyShapes(): StoredShape[] {
   }
 }
 
-export function saveShape(hash: string, descriptor: ShapeDescriptor): void {
+/**
+ * Normalize pixel-space vertices to [0,1] unit space for thumbnail storage.
+ */
+function normalizeVertices(pts: Point[]): Point[] {
+  if (pts.length === 0) return [];
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of pts) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  const w = maxX - minX || 1;
+  const h = maxY - minY || 1;
+  const scale = 0.85 / Math.max(w, h);
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  return pts.map(p => ({
+    x: Math.round(((p.x - cx) * scale + 0.5) * 1000) / 1000,
+    y: Math.round(((p.y - cy) * scale + 0.5) * 1000) / 1000,
+  }));
+}
+
+export function saveShape(hash: string, descriptor: ShapeDescriptor, drawnVertices: Point[]): void {
   const shapes = getMyShapes();
   if (shapes.some(s => s.hash === hash)) return;
-  shapes.unshift({ hash, descriptor, timestamp: Date.now() });
+  const vertices = normalizeVertices(drawnVertices);
+  shapes.unshift({ hash, descriptor, vertices, timestamp: Date.now() });
   if (shapes.length > MAX_STORED_SHAPES) shapes.length = MAX_STORED_SHAPES;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(shapes));
   window.dispatchEvent(new Event('shapes-updated'));

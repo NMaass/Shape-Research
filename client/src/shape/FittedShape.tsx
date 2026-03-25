@@ -1,23 +1,19 @@
 import { useMemo } from 'react';
-import type { ShapeDescriptor, Point } from 'shape-research-shared';
-import { reconstructShape } from '../pipeline/fitShape';
+import type { Point } from 'shape-research-shared';
 
 interface FittedShapeProps {
-  descriptor: ShapeDescriptor;
+  /** Pre-normalized [0,1] vertices to display. */
+  vertices: Point[];
   size: number;
 }
 
-export default function FittedShape({ descriptor, size }: FittedShapeProps) {
-  const key = JSON.stringify(descriptor);
-  const vertices = useMemo(() => reconstructShape(descriptor), [key]);
-
+export default function FittedShape({ vertices, size }: FittedShapeProps) {
   const path = useMemo(() => {
     if (vertices.length < 2) return '';
     const pts = vertices.map(v => `${r(v.x)} ${r(v.y)}`);
     return `M ${pts[0]} ` + pts.slice(1).map(p => `L ${p}`).join(' ') + ' Z';
   }, [vertices]);
 
-  // Vertices are in [0,1] unit space
   const padding = 0.08;
   const viewSize = 1 + padding * 2;
 

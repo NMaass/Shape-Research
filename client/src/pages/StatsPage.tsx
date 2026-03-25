@@ -135,8 +135,8 @@ export default function StatsPage() {
                       alignItems: 'center',
                     }}
                   >
-                    {shape.descriptor ? (
-                      <FittedShape descriptor={shape.descriptor} size={32} />
+                    {shape.vertices && shape.vertices.length > 0 ? (
+                      <FittedShape vertices={shape.vertices} size={32} />
                     ) : (
                       <div style={{ width: 32, height: 32, background: 'var(--color-border)' }} />
                     )}

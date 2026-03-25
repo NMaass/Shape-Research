@@ -265,7 +265,7 @@ function isCirclelike(points: Point[]): boolean {
   if (meanR === 0) return false;
   let variance = 0;
   for (const r of radii) { const d = (r - meanR) / meanR; variance += d * d; }
-  return Math.sqrt(variance / n) < 0.12;
+  return Math.sqrt(variance / n) < 0.15;
 }
 
 export function fitShape(loopPoints: Point[]): FitResult {
@@ -282,9 +282,9 @@ export function fitShape(loopPoints: Point[]): FitResult {
   }
 
   // Circle if: too few corners, OR radius-uniform with only weak corners.
-  // Strong corners (>40° turning) override circle-likeness — a hexagon has
-  // uniform radius but sharp turns at vertices.
-  const circlelike = isCirclelike(loopPoints) && maxCornerAngle < 40;
+  // Real polygon corners are sharp: hexagon ~60°, pentagon ~72°, square ~90°.
+  // Freehand circle noise rarely exceeds 50°, so use that as the cutoff.
+  const circlelike = isCirclelike(loopPoints) && maxCornerAngle < 50;
 
   if (circlelike || corners.length < 3) {
     // For circles, build drawn vertices from a fitted ellipse
