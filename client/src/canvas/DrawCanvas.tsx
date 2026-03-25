@@ -4,7 +4,7 @@ import { usePointerStroke } from './usePointerStroke';
 import { drawStroke, drawLoop, drawShapeOutline, drawResultText, getBBox, fadeStroke } from './strokeRenderer';
 import { processShape } from '../pipeline/pipeline';
 import { discoverShape } from '../api/client';
-import { saveShape, getMyShapes } from '../store/localStorage';
+import { saveShape } from '../store/localStorage';
 
 const RESULT_DISPLAY_MS = 3000;
 
@@ -81,18 +81,9 @@ export default function DrawCanvas() {
       // Process through pipeline
       const shapeResult = processShape(loop);
 
-      // Check locally first — do we already have this shape?
-      const localShapes = getMyShapes();
-      const alreadyLocal = localShapes.some(s => s.hash === shapeResult.hash);
-
-      // Try server, but don't depend on it
-      let isNew = !alreadyLocal;
-      try {
-        const discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
-        if (!discovery.isNew) isNew = false;
-      } catch {
-        // Server unavailable — use local-only detection
-      }
+      // Check with server
+      const discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
+      const isNew = discovery.isNew;
 
       // Discard if a newer loop was closed while we awaited
       if (thisRequest !== requestIdRef.current) return;

@@ -32,8 +32,9 @@ export function rasterToSvgPath(raster: number[]): string {
 
 /**
  * Generate a smoothed SVG path from an 8×8 binary raster.
- * Applies Chaikin corner-cutting to round the jagged pixel boundaries,
- * then emits cubic bezier curves for a soft, organic outline.
+ * Uses Douglas-Peucker to collapse the pixel staircase into key shape
+ * vertices, then draws Catmull-Rom cubic bezier curves through them
+ * for one continuous smooth outline.
  */
 export function rasterToSmoothedPath(raster: number[]): string {
   const segments = collectBoundaryEdges(raster);
@@ -53,51 +54,112 @@ export function rasterToSmoothedPath(raster: number[]): string {
 
     if (pts.length < 3) continue;
 
-    // Apply Chaikin corner-cutting (3 iterations for nice smoothness)
-    const smooth = chaikinSmooth(pts, 3);
+    // Simplify: collapse staircase steps into clean diagonals
+    const simplified = douglasPeuckerClosed(pts, 0.7);
 
-    // Emit as cubic bezier through the smoothed points
-    path += smoothedContourToPath(smooth);
+    if (simplified.length < 3) continue;
+
+    // Draw smooth Catmull-Rom curves through the simplified vertices
+    path += catmullRomClosedPath(simplified);
   }
 
   return path;
 }
 
 /**
- * Chaikin's corner-cutting algorithm on a closed polygon.
- * Each iteration replaces each edge with two points at 25% and 75%,
- * producing a progressively smoother curve.
+ * Douglas-Peucker simplification for a closed polygon.
+ * Removes points that deviate less than `tolerance` from the line
+ * between their neighbors, collapsing staircase patterns into
+ * clean straight or diagonal edges.
  */
-function chaikinSmooth(points: Point[], iterations: number): Point[] {
-  let pts = points;
-  for (let iter = 0; iter < iterations; iter++) {
-    const next: Point[] = [];
-    const n = pts.length;
-    for (let i = 0; i < n; i++) {
-      const a = pts[i];
-      const b = pts[(i + 1) % n];
-      next.push({
-        x: a.x * 0.75 + b.x * 0.25,
-        y: a.y * 0.75 + b.y * 0.25,
-      });
-      next.push({
-        x: a.x * 0.25 + b.x * 0.75,
-        y: a.y * 0.25 + b.y * 0.75,
-      });
+function douglasPeuckerClosed(points: Point[], tolerance: number): Point[] {
+  const n = points.length;
+  if (n <= 3) return points;
+
+  // Find the two points farthest apart to split the closed polygon
+  // into two open polylines, then simplify each half.
+  let maxDist = 0;
+  let splitA = 0;
+  let splitB = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const dx = points[i].x - points[j].x;
+      const dy = points[i].y - points[j].y;
+      const d = dx * dx + dy * dy;
+      if (d > maxDist) {
+        maxDist = d;
+        splitA = i;
+        splitB = j;
+      }
     }
-    pts = next;
   }
-  return pts;
+
+  // Build two halves
+  const half1: Point[] = [];
+  for (let i = splitA; i <= splitB; i++) half1.push(points[i]);
+  const half2: Point[] = [];
+  for (let i = splitB; i < n; i++) half2.push(points[i]);
+  half2.push(points[splitA]);
+
+  const s1 = douglasPeuckerOpen(half1, tolerance);
+  const s2 = douglasPeuckerOpen(half2, tolerance);
+
+  // Merge, avoiding duplicate junction points
+  const result = [...s1];
+  for (let i = 1; i < s2.length - 1; i++) result.push(s2[i]);
+
+  return result;
+}
+
+/** Douglas-Peucker for an open polyline. */
+function douglasPeuckerOpen(points: Point[], tolerance: number): Point[] {
+  if (points.length <= 2) return points;
+
+  // Find the point farthest from the line between first and last
+  const first = points[0];
+  const last = points[points.length - 1];
+  let maxDist = 0;
+  let maxIdx = 0;
+
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = perpendicularDist(points[i], first, last);
+    if (d > maxDist) {
+      maxDist = d;
+      maxIdx = i;
+    }
+  }
+
+  if (maxDist > tolerance) {
+    const left = douglasPeuckerOpen(points.slice(0, maxIdx + 1), tolerance);
+    const right = douglasPeuckerOpen(points.slice(maxIdx), tolerance);
+    return [...left.slice(0, -1), ...right];
+  }
+
+  return [first, last];
+}
+
+/** Perpendicular distance from point p to line segment a-b. */
+function perpendicularDist(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) {
+    const ex = p.x - a.x;
+    const ey = p.y - a.y;
+    return Math.sqrt(ex * ex + ey * ey);
+  }
+  const num = Math.abs(dy * p.x - dx * p.y + b.x * a.y - b.y * a.x);
+  return num / Math.sqrt(lenSq);
 }
 
 /**
- * Convert a smoothed closed contour to an SVG path using Catmull-Rom
- * style cubic bezier segments for extra smoothness.
+ * Convert a closed polygon to an SVG path using Catmull-Rom cubic
+ * bezier curves. Produces one smooth continuous curve.
  */
-function smoothedContourToPath(pts: Point[]): string {
-  if (pts.length < 3) return '';
-
+function catmullRomClosedPath(pts: Point[]): string {
   const n = pts.length;
+  if (n < 3) return '';
+
   let path = `M ${r(pts[0].x)} ${r(pts[0].y)} `;
 
   for (let i = 0; i < n; i++) {
