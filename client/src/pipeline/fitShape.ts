@@ -93,7 +93,7 @@ export function detectCorners(points: Point[]): number[] {
 
   // Window size for computing turning angle (adaptive to shape size)
   // Larger window = more smoothing = fewer spurious corners from noise
-  const window = Math.max(3, Math.floor(n * 0.06));
+  const window = Math.max(3, Math.floor(n * 0.08));
 
   // Compute turning angles
   const angles: number[] = [];
@@ -101,8 +101,9 @@ export function detectCorners(points: Point[]): number[] {
     angles.push(turningAngle(points, i, window));
   }
 
-  // Threshold: must turn > 30° to be a corner (filters out freehand wobble)
-  const threshold = 30;
+  // Threshold: 20° catches obtuse-angle corners (e.g. 160° interior = 20° turn)
+  // while the large smoothing window filters out freehand wobble
+  const threshold = 20;
 
   // Find peaks above threshold with non-maximum suppression
   const minSep = Math.max(5, Math.floor(n * 0.10));
@@ -274,7 +275,7 @@ export function fitShape(loopPoints: Point[]): FitResult {
 
   // Determine the strongest turning angle among detected corners
   const n = loopPoints.length - 1;
-  const window = Math.max(3, Math.floor(n * 0.06));
+  const window = Math.max(3, Math.floor(n * 0.08));
   let maxCornerAngle = 0;
   for (const ci of corners) {
     const ta = turningAngle(loopPoints, ci, window);
