@@ -4,10 +4,11 @@ import { getStats } from '../api/client';
 import { getPersonalStats, useMyShapes } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
 
-// Exact count of canonical convex shape descriptors with straight edges,
-// computed via Burnside's lemma over the dihedral group (see countShapes.ts).
-// 9 circles/ellipses + 582 triangles + 41,415 quads + ... + 4,852,541,053 octagons.
-const ESTIMATED_TOTAL = 5_298_383_416;
+// Practical shape count: the pipeline reliably distinguishes ~50k shapes given
+// its 15° angle quantum, 0.2 edge ratio steps, corner detection limits, and
+// 128-point resampling. Theoretical Burnside count is billions, but smoothing
+// and detection thresholds collapse most of that space.
+const ESTIMATED_TOTAL = 50_000;
 
 type LoadState = 'loading' | 'error' | 'ready';
 

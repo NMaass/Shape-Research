@@ -299,7 +299,7 @@ export function fitShape(loopPoints: Point[]): FitResult {
   // typically sum to 180-280° even with many spurious corners.
   const circlelike = isCirclelike(loopPoints) && turningAngleSum < 306;
 
-  if (circlelike || corners.length < 3) {
+  if (circlelike || corners.length < 2) {
     // For circles, build drawn vertices from a fitted ellipse
     const n = loopPoints.length - 1;
     let cx = 0, cy = 0;
@@ -340,9 +340,9 @@ export function fitShape(loopPoints: Point[]): FitResult {
   // In screen coordinates (Y-down), positive shoelace area = clockwise
   const ccw = signedArea(loopPoints) < 0;
 
-  // Extract the actual drawn corner positions (pixel space)
-  const drawnVertices = corners.map(i => ({ ...loopPoints[i] }));
-  drawnVertices.push({ ...drawnVertices[0] }); // close
+  // Build drawnVertices: trace through corner points, preserving curved edges.
+  // For straight edges, just connect corners. For curved edges, include
+  // intermediate points from the drawn stroke to preserve the curvature.
 
   // Compute angles at each corner
   const rawAngles: number[] = [];
@@ -376,6 +376,30 @@ export function fitShape(loopPoints: Point[]): FitResult {
     if (Math.abs(b) < BULGE_STRAIGHT_THRESHOLD) return 0;
     return quantize(b, BULGE_QUANTUM);
   });
+
+  // Build drawnVertices with curvature: straight edges get 2 points,
+  // curved edges get intermediate points from the original stroke.
+  const drawnVertices: Point[] = [];
+  const PTS_PER_CURVED_EDGE = 16;
+  for (let i = 0; i < nCorners; i++) {
+    const startIdx = corners[i];
+    const endIdx = corners[(i + 1) % nCorners];
+    drawnVertices.push({ ...loopPoints[startIdx] });
+
+    if (bulges[i] !== 0) {
+      // Curved edge: sample points along the original drawn stroke
+      let segLen = endIdx > startIdx
+        ? endIdx - startIdx
+        : baseLen - startIdx + endIdx;
+      for (let s = 1; s < PTS_PER_CURVED_EDGE; s++) {
+        const frac = s / PTS_PER_CURVED_EDGE;
+        const idx = (startIdx + Math.round(frac * segLen)) % baseLen;
+        drawnVertices.push({ ...loopPoints[idx] });
+      }
+    }
+    // straight edges: just the corner point (next corner added in next iteration)
+  }
+  drawnVertices.push({ ...drawnVertices[0] }); // close
 
   return {
     descriptor: { n: nCorners, angles, edgeRatios: qEdgeRatios, bulges },
