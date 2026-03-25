@@ -52,28 +52,29 @@ export function usePointerStroke({
 
     const points = pointsRef.current;
 
-    // First check for actual self-intersection
-    const intersection = findAnySelfIntersection(points);
-    if (intersection) {
-      const loop = trimToLoop(points, intersection, intersection.secondSegmentIndex);
-      onLoopClosed(loop);
-      pointsRef.current = [];
-      return;
-    }
-
-    // If no intersection, check if end is close enough to start to snap closed
+    // Prefer snap-close: if the end is near the start, use the entire stroke
+    // as the loop. This preserves complex shapes (stars, etc.) that would
+    // otherwise be truncated to a small triangle at the first crossing.
     if (points.length >= 4) {
       const start = points[0];
       const end = points[points.length - 1];
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       if (dx * dx + dy * dy < snapDistance * snapDistance) {
-        // Close the loop by connecting back to start
         const loop = [...points, start];
         onLoopClosed(loop);
         pointsRef.current = [];
         return;
       }
+    }
+
+    // Fall back to self-intersection detection
+    const intersection = findAnySelfIntersection(points);
+    if (intersection) {
+      const loop = trimToLoop(points, intersection, intersection.secondSegmentIndex);
+      onLoopClosed(loop);
+      pointsRef.current = [];
+      return;
     }
 
     onStrokeEnd([...points]);

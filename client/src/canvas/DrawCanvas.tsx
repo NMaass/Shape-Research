@@ -4,7 +4,7 @@ import { usePointerStroke } from './usePointerStroke';
 import { drawStroke, drawLoop, drawShapeOutline, drawResultText, getBBox, fadeStroke } from './strokeRenderer';
 import { processShape } from '../pipeline/pipeline';
 import { discoverShape } from '../api/client';
-import { saveShape } from '../store/localStorage';
+import { saveShape, getMyShapes } from '../store/localStorage';
 
 const RESULT_DISPLAY_MS = 3000;
 
@@ -81,14 +81,24 @@ export default function DrawCanvas() {
       // Process through pipeline
       const shapeResult = processShape(loop);
 
-      // Check with server
-      const discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
+      // Check locally first — do we already have this shape?
+      const localShapes = getMyShapes();
+      const alreadyLocal = localShapes.some(s => s.hash === shapeResult.hash);
+
+      // Try server, but don't depend on it
+      let isNew = !alreadyLocal;
+      try {
+        const discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
+        if (!discovery.isNew) isNew = false;
+      } catch {
+        // Server unavailable — use local-only detection
+      }
 
       // Discard if a newer loop was closed while we awaited
       if (thisRequest !== requestIdRef.current) return;
 
-      // Save locally only if confirmed new
-      if (discovery.isNew) {
+      // Save locally if new
+      if (isNew) {
         saveShape(shapeResult.hash, shapeResult.raster);
       }
 
@@ -97,8 +107,8 @@ export default function DrawCanvas() {
       drawShapeOutline(ctx, shapeResult.drawnRaster, bbox);
 
       // Draw result text below the raster
-      const label = discovery.isNew ? 'new shape discovered' : 'already discovered';
-      drawResultText(ctx, label, bbox);
+      const label = isNew ? 'new shape!' : 'already discovered';
+      drawResultText(ctx, label, bbox, isNew);
 
       // Clear after delay
       timerRef.current = setTimeout(() => {

@@ -14,13 +14,7 @@ function shouldSnapClose(
   points: Point[],
   snapDistance = DEFAULT_SNAP_DISTANCE,
 ): { closes: boolean; method: 'intersection' | 'snap' | 'none' } {
-  // First check for actual self-intersection
-  const intersection = findAnySelfIntersection(points);
-  if (intersection) {
-    return { closes: true, method: 'intersection' };
-  }
-
-  // Then check snap-to-start
+  // Prefer snap-close: preserves complex shapes like stars
   if (points.length >= 4) {
     const start = points[0];
     const end = points[points.length - 1];
@@ -29,6 +23,12 @@ function shouldSnapClose(
     if (dx * dx + dy * dy < snapDistance * snapDistance) {
       return { closes: true, method: 'snap' };
     }
+  }
+
+  // Fall back to self-intersection
+  const intersection = findAnySelfIntersection(points);
+  if (intersection) {
+    return { closes: true, method: 'intersection' };
   }
 
   return { closes: false, method: 'none' };
@@ -102,21 +102,21 @@ describe('snap-close logic', () => {
       expect(result.closes).toBe(false);
     });
 
-    it('prefers intersection over snap when both apply', () => {
+    it('prefers snap over intersection when both apply', () => {
       // A path that crosses itself AND ends near start.
-      // The crossing must be between non-adjacent segments.
+      // Snap takes priority to preserve full shape (e.g. stars).
       const points: Point[] = [
         { x: 50, y: 0 },
         { x: 100, y: 0 },
         { x: 100, y: 100 },
         { x: 0, y: 100 },
         { x: 0, y: 0 },
-        { x: 75, y: -20 }, // crosses seg 0→1 (y=0 line at x between 50 and 100)
+        { x: 75, y: -20 }, // crosses seg 0→1
         { x: 55, y: 5 },   // also close to start (50,0)
       ];
       const result = shouldSnapClose(points);
       expect(result.closes).toBe(true);
-      expect(result.method).toBe('intersection');
+      expect(result.method).toBe('snap');
     });
 
     it('respects custom snap distance', () => {

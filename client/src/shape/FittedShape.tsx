@@ -28,7 +28,7 @@ export default function FittedShape({ raster, size }: FittedShapeProps) {
         d={path}
         fill="none"
         stroke="#222"
-        strokeWidth="0.35"
+        strokeWidth="0.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -36,7 +36,7 @@ export default function FittedShape({ raster, size }: FittedShapeProps) {
         d={path}
         fill="none"
         stroke="#222"
-        strokeWidth="0.55"
+        strokeWidth="0.8"
         strokeLinecap="round"
         strokeLinejoin="round"
         opacity="0.2"

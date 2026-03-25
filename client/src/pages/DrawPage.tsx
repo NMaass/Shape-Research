@@ -22,7 +22,7 @@ export default function DrawPage() {
         width: '100%',
         maxWidth: '480px',
         aspectRatio: '1',
-        borderBottom: '2px solid #222',
+        border: '1px solid #ddd',
         position: 'relative',
         touchAction: 'none',
         overflow: 'hidden',

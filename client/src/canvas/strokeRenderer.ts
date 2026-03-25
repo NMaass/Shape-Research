@@ -3,7 +3,7 @@ import { GRID_SIZE } from 'shape-research-shared';
 import { rasterToSmoothedPath } from '../shape/marchingSquares';
 
 const STROKE_COLOR = '#222';
-const STROKE_WIDTH = 3;
+const STROKE_WIDTH = 4;
 const FADE_DURATION = 500;
 
 function drawPath(
@@ -126,10 +126,11 @@ export function drawResultText(
   ctx: CanvasRenderingContext2D,
   text: string,
   bbox: BBox,
+  isNew = false,
 ): void {
   ctx.save();
   ctx.font = '13px "Courier New", Courier, monospace';
-  ctx.fillStyle = '#999';
+  ctx.fillStyle = isNew ? '#2a9d2a' : '#999';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillText(text, bbox.x + bbox.width / 2, bbox.y + bbox.height + 12);
