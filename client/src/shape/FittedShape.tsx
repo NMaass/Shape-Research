@@ -11,7 +11,7 @@ export default function FittedShape({ raster, size }: FittedShapeProps) {
   const rasterKey = JSON.stringify(raster);
   const path = useMemo(() => rasterToSvgPath(raster), [rasterKey]);
 
-  // Add padding around the shape
+  // Boundary tracing coordinates span [0, GRID_SIZE]; add a small margin
   const padding = 0.5;
   const viewSize = GRID_SIZE + padding * 2;
 

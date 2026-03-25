@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { Point } from 'shape-research-shared';
 import { usePointerStroke } from './usePointerStroke';
-import { drawStroke, drawLoop, drawRaster, drawResultText, getBBox, fadeStroke } from './strokeRenderer';
+import { drawStroke, drawLoop, drawShapeOutline, drawResultText, getBBox, fadeStroke } from './strokeRenderer';
 import { processShape } from '../pipeline/pipeline';
 import { discoverShape } from '../api/client';
 import { saveShape } from '../store/localStorage';
@@ -92,9 +92,9 @@ export default function DrawCanvas() {
         saveShape(shapeResult.hash, shapeResult.raster);
       }
 
-      // Replace the drawn loop with the identified raster at the same position
+      // Replace the drawn loop with the identified shape outline at the same position
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawRaster(ctx, shapeResult.drawnRaster, bbox);
+      drawShapeOutline(ctx, shapeResult.drawnRaster, bbox);
 
       // Draw result text below the raster
       const label = discovery.isNew ? 'new shape discovered' : 'already discovered';
