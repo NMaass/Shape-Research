@@ -39,6 +39,9 @@ export default {
       if (path === '/api/stats' && request.method === 'GET') {
         return handleStats(env);
       }
+      if (path === '/api/reset' && request.method === 'POST') {
+        return handleReset(env);
+      }
 
       return json({ error: 'not found' }, 404);
     } catch (err) {
@@ -89,6 +92,13 @@ async function handleDiscover(request: Request, env: Env): Promise<Response> {
     }));
   }
 
+  return json(data);
+}
+
+async function handleReset(env: Env): Promise<Response> {
+  const registry = await getRegistry(env);
+  const res = await registry.fetch(new Request('http://do/reset', { method: 'POST' }));
+  const data = await res.json();
   return json(data);
 }
 
