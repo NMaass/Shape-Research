@@ -4,7 +4,10 @@ import { getStats } from '../api/client';
 import { getPersonalStats, useMyShapes } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
 
-const ESTIMATED_TOTAL = 100_000;
+// Exact count of canonical convex shape descriptors with straight edges,
+// computed via Burnside's lemma over the dihedral group (see countShapes.ts).
+// 9 circles/ellipses + 582 triangles + 41,415 quads + ... + 4,852,541,053 octagons.
+const ESTIMATED_TOTAL = 5_298_383_416;
 
 type LoadState = 'loading' | 'error' | 'ready';
 

@@ -4,6 +4,7 @@ export { ShapeRegistry };
 
 export interface Env {
   SHAPE_REGISTRY: DurableObjectNamespace;
+  SHAPES: KVNamespace;
 }
 
 const CORS_HEADERS = {
