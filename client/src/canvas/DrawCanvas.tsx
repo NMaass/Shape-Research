@@ -1,25 +1,15 @@
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import type { Point } from 'shape-research-shared';
 import { usePointerStroke } from './usePointerStroke';
-import { drawStroke, drawLoop, drawRaster, getBBox, fadeStroke } from './strokeRenderer';
-import type { BBox } from './strokeRenderer';
+import { drawStroke, drawLoop, drawRaster, drawResultText, getBBox, fadeStroke } from './strokeRenderer';
 import { processShape } from '../pipeline/pipeline';
 import { discoverShape } from '../api/client';
 import { saveShape } from '../store/localStorage';
-import FittedShape from '../shape/FittedShape';
-import { secondaryTextStyle, SMALL_FONT } from '../styles';
 
 const RESULT_DISPLAY_MS = 3000;
 
-interface ResultState {
-  isNew: boolean;
-  raster: number[];
-  hash: string;
-}
-
 export default function DrawCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [result, setResult] = useState<ResultState | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const requestIdRef = useRef(0);
   const fadeRef = useRef<(() => void) | null>(null);
@@ -85,7 +75,7 @@ export default function DrawCanvas() {
     drawLoop(ctx, loop);
 
     // Remember the bounding box of the user's drawing
-    const bbox: BBox = getBBox(loop);
+    const bbox = getBBox(loop);
 
     try {
       // Process through pipeline
@@ -106,22 +96,17 @@ export default function DrawCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawRaster(ctx, shapeResult.drawnRaster, bbox);
 
-      // Show result
-      setResult({
-        isNew: discovery.isNew,
-        raster: shapeResult.raster,
-        hash: shapeResult.hash,
-      });
+      // Draw result text below the raster
+      const label = discovery.isNew ? 'new shape discovered' : 'already discovered';
+      drawResultText(ctx, label, bbox);
 
       // Clear after delay
       timerRef.current = setTimeout(() => {
         clearCanvas();
-        setResult(null);
       }, RESULT_DISPLAY_MS);
     } catch (err) {
       console.error('shape processing failed:', err);
       clearCanvas();
-      setResult(null);
     }
   }, [clearCanvas]);
 
@@ -141,48 +126,19 @@ export default function DrawCanvas() {
     });
 
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      position: 'relative',
-      touchAction: 'none',
-      overflow: 'hidden',
-    }}>
-      <canvas
-        ref={canvasRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        role="img"
-        aria-label="drawing canvas — draw a closed shape to discover it"
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '100%',
-          cursor: 'crosshair',
-        }}
-      />
-
-      {result && (
-        <div aria-live="polite" style={{
-          position: 'absolute',
-          bottom: '2rem',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '0.75rem',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ ...secondaryTextStyle, fontSize: '0.75rem' }}>evaluated as →</span>
-            <FittedShape raster={result.raster} size={48} />
-          </div>
-          <p style={{ fontSize: SMALL_FONT }}>
-            {result.isNew ? 'shape discovered.' : 'this shape has been drawn before.'}
-          </p>
-        </div>
-      )}
-    </div>
+    <canvas
+      ref={canvasRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      role="img"
+      aria-label="drawing canvas"
+      style={{
+        display: 'block',
+        width: '100%',
+        height: '100%',
+        cursor: 'crosshair',
+      }}
+    />
   );
 }

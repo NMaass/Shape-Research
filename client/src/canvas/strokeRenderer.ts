@@ -110,6 +110,23 @@ export function drawRaster(
 }
 
 /**
+ * Draw a result label centered below the raster bounding box.
+ */
+export function drawResultText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  bbox: BBox,
+): void {
+  ctx.save();
+  ctx.font = '13px Georgia, "Times New Roman", serif';
+  ctx.fillStyle = '#888';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(text, bbox.x + bbox.width / 2, bbox.y + bbox.height + 12);
+  ctx.restore();
+}
+
+/**
  * Fade a stroke out over FADE_DURATION ms, clearing and redrawing each frame.
  * Calls onComplete when done. Returns a cancel function.
  */
