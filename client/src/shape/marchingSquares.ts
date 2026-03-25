@@ -55,12 +55,13 @@ export function rasterToSmoothedPath(raster: number[]): string {
     if (pts.length < 3) continue;
 
     // Simplify: collapse staircase steps into clean diagonals
-    const simplified = douglasPeuckerClosed(pts, 0.71);
+    const simplified = douglasPeuckerClosed(pts, 0.35);
 
     if (simplified.length < 3) continue;
 
-    // Resample at uniform spacing to prevent Catmull-Rom pinching
-    const resampled = resampleClosed(simplified, Math.max(simplified.length, 12));
+    // Resample at uniform spacing to prevent Catmull-Rom pinching.
+    // Use enough points for smooth curves even on round shapes.
+    const resampled = resampleClosed(simplified, Math.max(simplified.length * 2, 24));
 
     // Draw smooth Catmull-Rom curves through the evenly-spaced vertices
     path += catmullRomClosedPath(resampled);

@@ -80,24 +80,30 @@ export function getBBox(points: Point[], padding = 8): BBox {
 }
 
 /**
- * Draw the boundary outline of an 8×8 raster, scaled to fit the
- * given bounding box on the canvas. Stroked, not filled.
+ * Draw the boundary outline of a raster, centered in the canvas
+ * with a margin so curves never clip.
  */
 export function drawShapeOutline(
   ctx: CanvasRenderingContext2D,
   raster: number[],
-  bbox: BBox,
+  _bbox: BBox,
   alpha = 1,
 ): void {
   const svgPath = rasterToSmoothedPath(raster);
   if (!svgPath) return;
 
   const path = new Path2D(svgPath);
-  // Boundary tracing coordinates span [0, GRID_SIZE]
-  const cellSize = Math.min(bbox.width, bbox.height) / GRID_SIZE;
+  const canvasW = ctx.canvas.width;
+  const canvasH = ctx.canvas.height;
+
+  // Boundary tracing coordinates span [0, GRID_SIZE].
+  // Fit the shape centered in the canvas with a margin for stroke + curve overshoot.
+  const margin = 32;
+  const available = Math.min(canvasW, canvasH) - margin * 2;
+  const cellSize = available / GRID_SIZE;
   const totalSize = cellSize * GRID_SIZE;
-  const offsetX = bbox.x + (bbox.width - totalSize) / 2;
-  const offsetY = bbox.y + (bbox.height - totalSize) / 2;
+  const offsetX = (canvasW - totalSize) / 2;
+  const offsetY = (canvasH - totalSize) / 2;
 
   ctx.save();
   ctx.globalAlpha = alpha;
