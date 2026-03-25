@@ -240,10 +240,8 @@ function fitEllipse(points: Point[]): EllipseFit {
   const l1 = trace / 2 + disc;
   const l2 = trace / 2 - disc;
 
-  // Angle of major axis eigenvector
-  const angle = cxy !== 0
-    ? Math.atan2(l1 - cxx, cxy)
-    : (cyy > cxx ? Math.PI / 2 : 0);
+  // Angle of major axis — standard formula from covariance matrix
+  const angle = 0.5 * Math.atan2(2 * cxy, cxx - cyy);
 
   if (l1 === 0) return { ratio: 1, angle: 0 };
   return { ratio: Math.sqrt(Math.max(l2, 0) / l1), angle };
@@ -284,21 +282,22 @@ export function fitShape(loopPoints: Point[]): FitResult {
   // Always detect corners
   const corners = detectCorners(loopPoints);
 
-  // Determine the strongest turning angle among detected corners
+  // Determine total turning angle at detected corners
   const n = loopPoints.length - 1;
   const window = Math.max(3, Math.floor(n * 0.08));
-  let maxCornerAngle = 0;
+  let turningAngleSum = 0;
   for (const ci of corners) {
-    const ta = turningAngle(loopPoints, ci, window);
-    if (ta > maxCornerAngle) maxCornerAngle = ta;
+    turningAngleSum += turningAngle(loopPoints, ci, window);
   }
 
-  // Circle if: too few corners, OR radius-uniform with only weak corners.
-  // Real polygon corners are sharp: hexagon ~60°, pentagon ~72°, square ~90°.
-  // Freehand circle noise rarely exceeds 40°, so use that as the cutoff.
-  // Also require fewer than 3 strong corners — regular polygons (octagon etc.)
-  // have low radius variance but clearly detectable corners.
-  const circlelike = isCirclelike(loopPoints) && maxCornerAngle < 40 && corners.length < 3;
+  // Circle detection using total turning angle at corners.
+  // For any real N-gon, the exterior angles sum to exactly 360°. So the
+  // detected corner turning angles should account for most of that 360°.
+  // For a freehand circle, "corners" are noise — their turning angles sum
+  // to much less than 360° because the real curvature is distributed smoothly.
+  // Threshold: 85% of 360° (306°). Real polygons hit ~360°, noisy circles
+  // typically sum to 180-280° even with many spurious corners.
+  const circlelike = isCirclelike(loopPoints) && turningAngleSum < 306;
 
   if (circlelike || corners.length < 3) {
     // For circles, build drawn vertices from a fitted ellipse
