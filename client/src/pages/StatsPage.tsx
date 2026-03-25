@@ -4,7 +4,7 @@ import { getStats } from '../api/client';
 import { getPersonalStats, useMyShapes } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
 
-const ESTIMATED_TOTAL = 148_000_000;
+const ESTIMATED_TOTAL = 50_000;
 
 type LoadState = 'loading' | 'error' | 'ready';
 
@@ -135,7 +135,11 @@ export default function StatsPage() {
                       alignItems: 'center',
                     }}
                   >
-                    <FittedShape raster={shape.raster} size={32} />
+                    {shape.descriptor ? (
+                      <FittedShape descriptor={shape.descriptor} size={32} />
+                    ) : (
+                      <div style={{ width: 32, height: 32, background: 'var(--color-border)' }} />
+                    )}
                   </span>
                 ))}
               </div>

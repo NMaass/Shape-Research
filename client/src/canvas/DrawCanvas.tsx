@@ -2,7 +2,7 @@ import { useRef, useCallback, useEffect } from 'react';
 import type { Point } from 'shape-research-shared';
 import type { DiscoverResult } from 'shape-research-shared';
 import { usePointerStroke } from './usePointerStroke';
-import { drawStroke, drawLoop, drawShapeOutline, getBBox, fadeStroke } from './strokeRenderer';
+import { drawStroke, drawLoop, drawCleanShape, fadeStroke } from './strokeRenderer';
 import { processShape } from '../pipeline/pipeline';
 import { discoverShape } from '../api/client';
 import { saveShape, recordDiscovery } from '../store/localStorage';
@@ -90,8 +90,6 @@ export default function DrawCanvas({ onResult }: DrawCanvasProps) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawLoop(ctx, loop);
 
-    const bbox = getBBox(loop);
-
     let shapeResult;
     try {
       shapeResult = processShape(loop);
@@ -103,13 +101,13 @@ export default function DrawCanvas({ onResult }: DrawCanvasProps) {
 
     let discovery: DiscoverResult;
     try {
-      discovery = await discoverShape(shapeResult.hash, shapeResult.raster);
+      discovery = await discoverShape(shapeResult.hash, shapeResult.descriptor);
     } catch (err) {
       if (thisRequest !== requestIdRef.current) return;
       const msg = err instanceof Error ? err.message : 'unknown error';
       showResult({ error: `server error: ${msg}` }, ERROR_DISPLAY_MS);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawShapeOutline(ctx, shapeResult.drawnRaster, bbox);
+      drawCleanShape(ctx, shapeResult.vertices);
       console.error('discovery error:', err);
       return;
     }
@@ -117,13 +115,13 @@ export default function DrawCanvas({ onResult }: DrawCanvasProps) {
     if (thisRequest !== requestIdRef.current) return;
 
     if (discovery.isNew) {
-      saveShape(shapeResult.hash, shapeResult.raster);
+      saveShape(shapeResult.hash, shapeResult.descriptor);
     }
 
     const stats = recordDiscovery(discovery.isNew);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawShapeOutline(ctx, shapeResult.drawnRaster, bbox);
+    drawCleanShape(ctx, shapeResult.vertices);
 
     showResult({ discovery, stats }, RESULT_DISPLAY_MS);
   }, [clearCanvas, showResult, onResult]);

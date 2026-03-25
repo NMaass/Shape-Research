@@ -39,7 +39,11 @@ export default function MyShapesPage() {
               gap: '4px',
             }}
           >
-            <FittedShape raster={shape.raster} size={48} />
+            {shape.descriptor ? (
+              <FittedShape descriptor={shape.descriptor} size={48} />
+            ) : (
+              <div style={{ width: 48, height: 48, background: 'var(--color-border)' }} />
+            )}
             <span style={{ fontSize: '0.625rem', color: 'var(--color-muted)' }}>
               {new Date(shape.timestamp).toLocaleDateString('en-GB', {
                 day: 'numeric',

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { ShapeDescriptor } from 'shape-research-shared';
 
 const STORAGE_KEY = 'shape-research-discoveries';
 const STATS_KEY = 'shape-research-personal-stats';
@@ -6,9 +7,10 @@ const MAX_STORED_SHAPES = 500;
 
 export interface StoredShape {
   hash: string;
-  raster: number[];
+  descriptor: ShapeDescriptor;
   timestamp: number;
-  searchCount?: number;
+  /** @deprecated old raster format, kept for migration */
+  raster?: number[];
 }
 
 export interface PersonalStats {
@@ -65,10 +67,10 @@ export function getMyShapes(): StoredShape[] {
   }
 }
 
-export function saveShape(hash: string, raster: number[]): void {
+export function saveShape(hash: string, descriptor: ShapeDescriptor): void {
   const shapes = getMyShapes();
   if (shapes.some(s => s.hash === hash)) return;
-  shapes.unshift({ hash, raster, timestamp: Date.now() });
+  shapes.unshift({ hash, descriptor, timestamp: Date.now() });
   if (shapes.length > MAX_STORED_SHAPES) shapes.length = MAX_STORED_SHAPES;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(shapes));
   window.dispatchEvent(new Event('shapes-updated'));

@@ -1,6 +1,4 @@
 import type { Point } from 'shape-research-shared';
-import { GRID_SIZE } from 'shape-research-shared';
-import { rasterToSmoothedPath } from '../shape/marchingSquares';
 
 const STROKE_COLOR = '#222';
 const STROKE_WIDTH = 4;
@@ -80,47 +78,46 @@ export function getBBox(points: Point[], padding = 8): BBox {
 }
 
 /**
- * Draw the boundary outline of a raster, centered in the canvas
- * with a margin so curves never clip.
+ * Draw a clean geometric shape (reconstructed vertices in [0,1] space)
+ * centered in the canvas.
  */
-export function drawShapeOutline(
+export function drawCleanShape(
   ctx: CanvasRenderingContext2D,
-  raster: number[],
-  _bbox: BBox,
+  vertices: Point[],
   alpha = 1,
 ): void {
-  const svgPath = rasterToSmoothedPath(raster);
-  if (!svgPath) return;
+  if (vertices.length < 2) return;
 
-  const path = new Path2D(svgPath);
   const canvasW = ctx.canvas.width;
   const canvasH = ctx.canvas.height;
 
-  // Boundary tracing coordinates span [0, GRID_SIZE].
-  // Fit the shape centered in the canvas with a margin for stroke + curve overshoot.
-  const margin = 32;
+  // Vertices are in [0,1] unit space. Scale to fit canvas with margin.
+  const margin = 40;
   const available = Math.min(canvasW, canvasH) - margin * 2;
-  const cellSize = available / GRID_SIZE;
-  const totalSize = cellSize * GRID_SIZE;
-  const offsetX = (canvasW - totalSize) / 2;
-  const offsetY = (canvasH - totalSize) / 2;
+  const offsetX = (canvasW - available) / 2;
+  const offsetY = (canvasH - available) / 2;
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.translate(offsetX, offsetY);
-  ctx.scale(cellSize, cellSize);
+
+  ctx.beginPath();
+  ctx.moveTo(offsetX + vertices[0].x * available, offsetY + vertices[0].y * available);
+  for (let i = 1; i < vertices.length; i++) {
+    ctx.lineTo(offsetX + vertices[i].x * available, offsetY + vertices[i].y * available);
+  }
+  ctx.closePath();
 
   // Main stroke
   ctx.strokeStyle = STROKE_COLOR;
-  ctx.lineWidth = STROKE_WIDTH / cellSize;
+  ctx.lineWidth = STROKE_WIDTH;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-  ctx.stroke(path);
+  ctx.stroke();
 
-  // Crayon texture: softer, wider pass
-  ctx.globalAlpha = alpha * 0.25;
-  ctx.lineWidth = (STROKE_WIDTH + 2) / cellSize;
-  ctx.stroke(path);
+  // Softer shadow pass
+  ctx.globalAlpha = alpha * 0.2;
+  ctx.lineWidth = STROKE_WIDTH + 2;
+  ctx.stroke();
 
   ctx.restore();
 }

@@ -1,7 +1,5 @@
 import { ShapeRegistry } from './durable/ShapeRegistry';
 
-const GRID_SIZE = 8;
-
 export { ShapeRegistry };
 
 export interface Env {
@@ -20,12 +18,6 @@ function json(data: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
-}
-
-function isValidRaster(raster: unknown): raster is number[] {
-  if (!Array.isArray(raster)) return false;
-  if (raster.length !== GRID_SIZE * GRID_SIZE) return false;
-  return raster.every(v => v === 0 || v === 1);
 }
 
 export default {
@@ -75,15 +67,15 @@ async function handleCheck(url: URL, env: Env): Promise<Response> {
 }
 
 async function handleDiscover(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as { hash: string; raster: unknown; user?: string };
-  if (!body.hash || !isValidRaster(body.raster)) {
-    return json({ error: 'missing or invalid hash/raster' }, 400);
+  const body = await request.json() as { hash: string; descriptor?: unknown; raster?: unknown; user?: string };
+  if (!body.hash) {
+    return json({ error: 'missing hash' }, 400);
   }
 
   const registry = await getRegistry(env);
   const res = await registry.fetch(new Request('http://do/discover', {
     method: 'POST',
-    body: JSON.stringify({ hash: body.hash, raster: body.raster, user: body.user }),
+    body: JSON.stringify({ hash: body.hash, user: body.user }),
   }));
   const data = await res.json() as { isNew: boolean; discoveryNumber?: number };
 
@@ -91,7 +83,7 @@ async function handleDiscover(request: Request, env: Env): Promise<Response> {
   if (data.isNew) {
     await env.SHAPES.put(`shape:${body.hash}`, JSON.stringify({
       hash: body.hash,
-      raster: body.raster,
+      descriptor: body.descriptor,
       discoverer: body.user || 'anonymous',
       timestamp: Date.now(),
     }));

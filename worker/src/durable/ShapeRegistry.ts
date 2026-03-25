@@ -15,7 +15,7 @@ export class ShapeRegistry implements DurableObject {
     }
 
     if (url.pathname === '/discover') {
-      const body = await request.json() as { hash: string; raster: number[]; user?: string };
+      const body = await request.json() as { hash: string; user?: string };
 
       let result: { isNew: boolean; discoveryNumber?: number; timestamp: string; count: number } = {
         isNew: false, timestamp: '', count: 0,

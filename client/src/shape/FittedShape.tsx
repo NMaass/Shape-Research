@@ -1,19 +1,25 @@
 import { useMemo } from 'react';
-import { GRID_SIZE } from 'shape-research-shared';
-import { rasterToSmoothedPath } from './marchingSquares';
+import type { ShapeDescriptor, Point } from 'shape-research-shared';
+import { reconstructShape } from '../pipeline/fitShape';
 
 interface FittedShapeProps {
-  raster: number[];
+  descriptor: ShapeDescriptor;
   size: number;
 }
 
-export default function FittedShape({ raster, size }: FittedShapeProps) {
-  const rasterKey = JSON.stringify(raster);
-  const path = useMemo(() => rasterToSmoothedPath(raster), [rasterKey]);
+export default function FittedShape({ descriptor, size }: FittedShapeProps) {
+  const key = JSON.stringify(descriptor);
+  const vertices = useMemo(() => reconstructShape(descriptor), [key]);
 
-  // Boundary tracing coordinates span [0, GRID_SIZE]; add a small margin
-  const padding = 0.5;
-  const viewSize = GRID_SIZE + padding * 2;
+  const path = useMemo(() => {
+    if (vertices.length < 2) return '';
+    const pts = vertices.map(v => `${r(v.x)} ${r(v.y)}`);
+    return `M ${pts[0]} ` + pts.slice(1).map(p => `L ${p}`).join(' ') + ' Z';
+  }, [vertices]);
+
+  // Vertices are in [0,1] unit space
+  const padding = 0.08;
+  const viewSize = 1 + padding * 2;
 
   return (
     <svg
@@ -28,19 +34,14 @@ export default function FittedShape({ raster, size }: FittedShapeProps) {
         d={path}
         fill="none"
         stroke="#222"
-        strokeWidth="0.5"
+        strokeWidth={0.03}
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-      <path
-        d={path}
-        fill="none"
-        stroke="#222"
-        strokeWidth="0.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.2"
       />
     </svg>
   );
+}
+
+function r(n: number): string {
+  return (Math.round(n * 1000) / 1000).toString();
 }

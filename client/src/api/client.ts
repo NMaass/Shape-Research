@@ -1,4 +1,4 @@
-import type { DiscoverResult, StatsResult } from 'shape-research-shared';
+import type { DiscoverResult, StatsResult, ShapeDescriptor } from 'shape-research-shared';
 
 const API_BASE = import.meta.env.DEV
   ? '/api'
@@ -13,13 +13,13 @@ export class ApiError extends Error {
 
 export async function discoverShape(
   hash: string,
-  raster: number[],
+  descriptor: ShapeDescriptor,
   user?: string,
 ): Promise<DiscoverResult> {
   const res = await fetch(`${API_BASE}/discover`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hash, raster, user }),
+    body: JSON.stringify({ hash, descriptor, user }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');

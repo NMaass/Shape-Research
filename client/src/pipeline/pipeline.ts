@@ -1,32 +1,22 @@
 import type { Point, ShapeResult } from 'shape-research-shared';
 import { resample } from './resample';
-import { normalize } from './normalize';
-import { rasterize } from './rasterize';
-import { canonicalize } from './canonical';
-import { smoothRaster, dctHash } from './dct';
+import { fitShape, canonicalizeDescriptor, hashDescriptor, reconstructShape } from './fitShape';
 
-const RESAMPLE_COUNT = 64;
-
-export interface ProcessedShape extends ShapeResult {
-  /** Smoothed raster matching the user's drawn orientation */
-  drawnRaster: number[];
-}
+const RESAMPLE_COUNT = 128;
 
 /**
  * Full pipeline:
- * raw loop → resample → normalize → rasterize (4× supersample)
- *          → smooth (low-freq DCT) → canonicalize → hash
+ * raw loop → resample → fit geometric shape (detect corners, angles, edges)
+ *          → canonicalize (dihedral symmetry) → hash descriptor
  *
- * Supersampling stabilizes boundary cells. DCT smoothing further absorbs
- * noise so freehand re-draws of the same shape produce the same hash.
+ * Returns a clean geometric descriptor and reconstructed vertices for rendering.
  */
-export function processShape(loopPoints: Point[]): ProcessedShape {
+export function processShape(loopPoints: Point[]): ShapeResult {
   const resampled = resample(loopPoints, RESAMPLE_COUNT);
-  const normalized = normalize(resampled);
-  const raster = rasterize(normalized);
-  const smoothed = smoothRaster(raster);
-  const canonical = canonicalize(smoothed);
-  const hash = dctHash(canonical);
+  const descriptor = fitShape(resampled);
+  const canonical = canonicalizeDescriptor(descriptor);
+  const hash = hashDescriptor(canonical);
+  const vertices = reconstructShape(canonical);
 
-  return { hash, raster: canonical, drawnRaster: smoothed };
+  return { hash, descriptor: canonical, vertices };
 }
