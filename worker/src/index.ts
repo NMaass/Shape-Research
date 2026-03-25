@@ -1,5 +1,6 @@
-import { GRID_SIZE } from 'shape-research-shared';
 import { ShapeRegistry } from './durable/ShapeRegistry';
+
+const GRID_SIZE = 8;
 
 export { ShapeRegistry };
 

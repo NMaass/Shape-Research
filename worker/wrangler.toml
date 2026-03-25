@@ -1,4 +1,4 @@
-name = "shape-research"
+name = "shape-research-api"
 main = "src/index.ts"
 compatibility_date = "2024-12-30"
 
