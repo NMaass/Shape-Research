@@ -3,25 +3,30 @@ import { resample } from './resample';
 import { normalize } from './normalize';
 import { rasterize } from './rasterize';
 import { canonicalize } from './canonical';
-import { dctHash } from './dct';
+import { smoothRaster, dctHash } from './dct';
 
 const RESAMPLE_COUNT = 64;
 
 export interface ProcessedShape extends ShapeResult {
-  /** Pre-canonical raster matching the user's drawn orientation */
+  /** Smoothed raster matching the user's drawn orientation */
   drawnRaster: number[];
 }
 
 /**
- * Full evaluation pipeline:
- * raw loop points → resample → normalize → rasterize → canonicalize → DCT hash
+ * Full pipeline:
+ * raw loop → resample → normalize → rasterize (4× supersample)
+ *          → smooth (low-freq DCT) → canonicalize → hash
+ *
+ * Supersampling stabilizes boundary cells. DCT smoothing further absorbs
+ * noise so freehand re-draws of the same shape produce the same hash.
  */
 export function processShape(loopPoints: Point[]): ProcessedShape {
   const resampled = resample(loopPoints, RESAMPLE_COUNT);
   const normalized = normalize(resampled);
   const raster = rasterize(normalized);
-  const canonical = canonicalize(raster);
+  const smoothed = smoothRaster(raster);
+  const canonical = canonicalize(smoothed);
   const hash = dctHash(canonical);
 
-  return { hash, raster: canonical, drawnRaster: raster };
+  return { hash, raster: canonical, drawnRaster: smoothed };
 }

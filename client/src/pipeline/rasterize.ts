@@ -31,16 +31,14 @@ function segmentIntersectsCell(
   const x1 = cellX, y1 = cellY;
   const x2 = cellX + cellSize, y2 = cellY + cellSize;
 
-  // Check if either endpoint is inside the cell
   if (ax >= x1 && ax <= x2 && ay >= y1 && ay <= y2) return true;
   if (bx >= x1 && bx <= x2 && by >= y1 && by <= y2) return true;
 
-  // Check segment against each cell edge
   const edges: [number, number, number, number][] = [
-    [x1, y1, x2, y1], // top
-    [x2, y1, x2, y2], // right
-    [x1, y2, x2, y2], // bottom
-    [x1, y1, x1, y2], // left
+    [x1, y1, x2, y1],
+    [x2, y1, x2, y2],
+    [x1, y2, x2, y2],
+    [x1, y1, x1, y2],
   ];
 
   for (const [cx, cy, dx, dy] of edges) {
@@ -72,13 +70,11 @@ export function rasterize(points: Point[]): number[] {
       const centerX = cellX + cellSize / 2;
       const centerY = cellY + cellSize / 2;
 
-      // Check if cell center is inside polygon
       if (pointInPolygon(centerX, centerY, points)) {
         grid[row * GRID_SIZE + col] = 1;
         continue;
       }
 
-      // Check if any polygon edge crosses this cell
       for (let i = 0; i < points.length - 1; i++) {
         if (segmentIntersectsCell(
           points[i].x, points[i].y,

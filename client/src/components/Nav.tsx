@@ -1,5 +1,4 @@
 import { NavLink } from 'react-router-dom';
-import { SECONDARY_COLOR, SMALL_FONT } from '../styles';
 
 const links = [
   { to: '/', label: 'draw' },
@@ -10,32 +9,36 @@ const links = [
 
 export default function Nav() {
   return (
-    <nav style={{
-      padding: '1.25rem 1.25rem 1rem',
-    }}>
+    <header style={{ padding: '40px 0 24px' }}>
       <NavLink to="/" style={{
-        fontWeight: 'normal',
+        fontWeight: 400,
         textDecoration: 'none',
-        fontSize: '1.125rem',
+        fontSize: '0.875rem',
+        letterSpacing: '0.05em',
         display: 'block',
-        marginBottom: '0.25rem',
       }}>
         Shape Research Inc.
       </NavLink>
-      <div style={{ display: 'flex', gap: '1.25rem', fontSize: SMALL_FONT }}>
+      <nav style={{
+        display: 'flex',
+        gap: '24px',
+        marginTop: '8px',
+        fontSize: '0.75rem',
+        color: 'var(--color-muted)',
+      }}>
         {links.map(({ to, label }) => (
           <NavLink
             key={to}
             to={to}
             style={({ isActive }) => ({
-              color: isActive ? '#222' : SECONDARY_COLOR,
+              color: isActive ? 'var(--color-text)' : 'var(--color-muted)',
               textDecoration: 'none',
             })}
           >
             {label}
           </NavLink>
         ))}
-      </div>
-    </nav>
+      </nav>
+    </header>
   );
 }

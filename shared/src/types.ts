@@ -13,6 +13,8 @@ export interface ShapeResult {
 export interface DiscoverResult {
   isNew: boolean;
   discoveryNumber?: number;
+  timestamp: string;
+  count: number;
 }
 
 export interface StatsResult {

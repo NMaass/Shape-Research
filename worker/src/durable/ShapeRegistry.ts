@@ -17,21 +17,38 @@ export class ShapeRegistry implements DurableObject {
     if (url.pathname === '/discover') {
       const body = await request.json() as { hash: string; raster: number[]; user?: string };
 
-      // Use blockConcurrencyWhile to prevent interleaving between the
-      // existence check and the write, ensuring atomic discovery.
-      let result: { isNew: boolean; discoveryNumber?: number } = { isNew: false };
+      let result: { isNew: boolean; discoveryNumber?: number; timestamp: string; count: number } = {
+        isNew: false, timestamp: '', count: 0,
+      };
 
       await this.state.blockConcurrencyWhile(async () => {
-        const exists = await this.state.storage.get<boolean>(`hash:${body.hash}`);
-        if (exists) return;
+        const existing = await this.state.storage.get<{ timestamp: string; count: number } | boolean>(`hash:${body.hash}`);
 
-        const count = await this.state.storage.get<number>('meta:count') ?? 0;
+        if (existing) {
+          // Migrate old boolean entries
+          const entry = typeof existing === 'boolean'
+            ? { timestamp: new Date().toISOString(), count: 1 }
+            : existing;
+          entry.count += 1;
+          await this.state.storage.put(`hash:${body.hash}`, entry);
+          result = { isNew: false, timestamp: entry.timestamp, count: entry.count };
+          return;
+        }
+
+        const totalCount = await this.state.storage.get<number>('meta:count') ?? 0;
+        const timestamp = new Date().toISOString();
+        const entry = { timestamp, count: 1 };
         await this.state.storage.put({
-          [`hash:${body.hash}`]: true,
-          'meta:count': count + 1,
+          [`hash:${body.hash}`]: entry,
+          'meta:count': totalCount + 1,
         });
 
-        result = { isNew: true, discoveryNumber: count + 1 };
+        // Track per-user discovery count
+        const user = body.user || 'anonymous';
+        const userCount = await this.state.storage.get<number>(`user:${user}`) ?? 0;
+        await this.state.storage.put(`user:${user}`, userCount + 1);
+
+        result = { isNew: true, discoveryNumber: totalCount + 1, timestamp, count: 1 };
       });
 
       return Response.json(result);

@@ -1,29 +1,52 @@
 import { useMyShapes } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
-import { pageStyle, pageTitleStyle, emptyStateStyle, TINY_FONT, SECONDARY_COLOR } from '../styles';
 
 export default function MyShapesPage() {
   const shapes = useMyShapes();
 
   if (shapes.length === 0) {
-    return <div style={emptyStateStyle}>no shapes discovered yet — go draw</div>;
+    return (
+      <div style={{ padding: '48px 0', fontSize: '0.875rem', color: 'var(--color-muted)' }}>
+        no shapes discovered yet — go draw
+      </div>
+    );
   }
 
   return (
-    <div style={pageStyle}>
-      <h1 style={pageTitleStyle}>my shapes</h1>
+    <div style={{ padding: '48px 0 80px' }}>
+      <p style={{
+        fontSize: '0.75rem',
+        color: 'var(--color-muted)',
+        letterSpacing: '0.05em',
+        marginBottom: '12px',
+      }}>
+        my shapes
+      </p>
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-        gap: '1rem',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '8px',
       }}>
         {shapes.map((shape) => (
-          <div key={shape.hash} style={{ textAlign: 'center' }}>
-            <FittedShape raster={shape.raster} size={64} />
-            <div style={{ fontSize: TINY_FONT, color: SECONDARY_COLOR, marginTop: '0.25rem' }}>
-              {new Date(shape.timestamp).toLocaleDateString()}
-            </div>
-          </div>
+          <span
+            key={shape.hash}
+            style={{
+              padding: '6px',
+              border: '1px solid var(--color-border)',
+              display: 'inline-flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <FittedShape raster={shape.raster} size={48} />
+            <span style={{ fontSize: '0.625rem', color: 'var(--color-muted)' }}>
+              {new Date(shape.timestamp).toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+              })}
+            </span>
+          </span>
         ))}
       </div>
     </div>
