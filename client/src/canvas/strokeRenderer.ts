@@ -1,8 +1,8 @@
 import type { Point } from 'shape-research-shared';
 import { GRID_SIZE } from 'shape-research-shared';
-import { rasterToSvgPath } from '../shape/marchingSquares';
+import { rasterToSmoothedPath } from '../shape/marchingSquares';
 
-const STROKE_COLOR = '#111';
+const STROKE_COLOR = '#222';
 const STROKE_WIDTH = 3;
 const FADE_DURATION = 500;
 
@@ -27,6 +27,11 @@ function drawPath(
     ctx.lineTo(points[i].x, points[i].y);
   }
   if (closed) ctx.closePath();
+  ctx.stroke();
+
+  // Double-stroke for crayon texture: thinner pass with slight offset
+  ctx.globalAlpha = alpha * 0.3;
+  ctx.lineWidth = STROKE_WIDTH + 1.5;
   ctx.stroke();
   ctx.restore();
 }
@@ -84,7 +89,7 @@ export function drawShapeOutline(
   bbox: BBox,
   alpha = 1,
 ): void {
-  const svgPath = rasterToSvgPath(raster);
+  const svgPath = rasterToSmoothedPath(raster);
   if (!svgPath) return;
 
   const path = new Path2D(svgPath);
@@ -98,11 +103,19 @@ export function drawShapeOutline(
   ctx.globalAlpha = alpha;
   ctx.translate(offsetX, offsetY);
   ctx.scale(cellSize, cellSize);
+
+  // Main stroke
   ctx.strokeStyle = STROKE_COLOR;
   ctx.lineWidth = STROKE_WIDTH / cellSize;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.stroke(path);
+
+  // Crayon texture: softer, wider pass
+  ctx.globalAlpha = alpha * 0.25;
+  ctx.lineWidth = (STROKE_WIDTH + 2) / cellSize;
+  ctx.stroke(path);
+
   ctx.restore();
 }
 
@@ -115,8 +128,8 @@ export function drawResultText(
   bbox: BBox,
 ): void {
   ctx.save();
-  ctx.font = '13px Georgia, "Times New Roman", serif';
-  ctx.fillStyle = '#888';
+  ctx.font = '13px "Courier New", Courier, monospace';
+  ctx.fillStyle = '#999';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillText(text, bbox.x + bbox.width / 2, bbox.y + bbox.height + 12);

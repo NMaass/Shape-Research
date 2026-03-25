@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { GRID_SIZE } from 'shape-research-shared';
-import { rasterToSvgPath } from './marchingSquares';
+import { rasterToSmoothedPath } from './marchingSquares';
 
 interface FittedShapeProps {
   raster: number[];
@@ -9,7 +9,7 @@ interface FittedShapeProps {
 
 export default function FittedShape({ raster, size }: FittedShapeProps) {
   const rasterKey = JSON.stringify(raster);
-  const path = useMemo(() => rasterToSvgPath(raster), [rasterKey]);
+  const path = useMemo(() => rasterToSmoothedPath(raster), [rasterKey]);
 
   // Boundary tracing coordinates span [0, GRID_SIZE]; add a small margin
   const padding = 0.5;
@@ -26,8 +26,20 @@ export default function FittedShape({ raster, size }: FittedShapeProps) {
     >
       <path
         d={path}
-        fill="#111"
-        stroke="none"
+        fill="none"
+        stroke="#222"
+        strokeWidth="0.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d={path}
+        fill="none"
+        stroke="#222"
+        strokeWidth="0.55"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.2"
       />
     </svg>
   );

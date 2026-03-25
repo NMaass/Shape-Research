@@ -31,6 +31,104 @@ export function rasterToSvgPath(raster: number[]): string {
 }
 
 /**
+ * Generate a smoothed SVG path from an 8×8 binary raster.
+ * Applies Chaikin corner-cutting to round the jagged pixel boundaries,
+ * then emits cubic bezier curves for a soft, organic outline.
+ */
+export function rasterToSmoothedPath(raster: number[]): string {
+  const segments = collectBoundaryEdges(raster);
+
+  if (segments.length === 0) return '';
+
+  const contours = chainSegments(segments);
+
+  let path = '';
+  for (const contour of contours) {
+    if (contour.length < 3) continue;
+
+    // Remove the duplicate closing point if present
+    const pts = pointsEqual(contour[0], contour[contour.length - 1])
+      ? contour.slice(0, -1)
+      : contour;
+
+    if (pts.length < 3) continue;
+
+    // Apply Chaikin corner-cutting (3 iterations for nice smoothness)
+    const smooth = chaikinSmooth(pts, 3);
+
+    // Emit as cubic bezier through the smoothed points
+    path += smoothedContourToPath(smooth);
+  }
+
+  return path;
+}
+
+/**
+ * Chaikin's corner-cutting algorithm on a closed polygon.
+ * Each iteration replaces each edge with two points at 25% and 75%,
+ * producing a progressively smoother curve.
+ */
+function chaikinSmooth(points: Point[], iterations: number): Point[] {
+  let pts = points;
+  for (let iter = 0; iter < iterations; iter++) {
+    const next: Point[] = [];
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % n];
+      next.push({
+        x: a.x * 0.75 + b.x * 0.25,
+        y: a.y * 0.75 + b.y * 0.25,
+      });
+      next.push({
+        x: a.x * 0.25 + b.x * 0.75,
+        y: a.y * 0.25 + b.y * 0.75,
+      });
+    }
+    pts = next;
+  }
+  return pts;
+}
+
+/**
+ * Convert a smoothed closed contour to an SVG path using Catmull-Rom
+ * style cubic bezier segments for extra smoothness.
+ */
+function smoothedContourToPath(pts: Point[]): string {
+  if (pts.length < 3) return '';
+
+  const n = pts.length;
+  let path = `M ${r(pts[0].x)} ${r(pts[0].y)} `;
+
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n];
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    const p3 = pts[(i + 2) % n];
+
+    // Catmull-Rom to cubic bezier control points
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    path += `C ${r(cp1x)} ${r(cp1y)}, ${r(cp2x)} ${r(cp2y)}, ${r(p2.x)} ${r(p2.y)} `;
+  }
+
+  path += 'Z ';
+  return path;
+}
+
+/** Round to 2 decimal places for compact SVG output. */
+function r(n: number): string {
+  return (Math.round(n * 100) / 100).toString();
+}
+
+function pointsEqual(a: Point, b: Point): boolean {
+  return a.x === b.x && a.y === b.y;
+}
+
+/**
  * Collect directed boundary edges from the raster.
  * Edges are oriented so that the filled cell is to the right of the edge
  * direction (clockwise winding).

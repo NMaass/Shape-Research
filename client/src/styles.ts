@@ -1,10 +1,10 @@
 import type { CSSProperties } from 'react';
 
 export const PAGE_MAX_WIDTH = '480px';
-export const SECONDARY_COLOR = '#888';
-export const BORDER_COLOR = '#eee';
+export const SECONDARY_COLOR = '#999';
+export const BORDER_COLOR = '#ddd';
 export const SMALL_FONT = '0.875rem';
-export const TINY_FONT = '0.6875rem';
+export const TINY_FONT = '0.75rem';
 
 export const pageStyle: CSSProperties = {
   maxWidth: PAGE_MAX_WIDTH,
