@@ -1,6 +1,8 @@
 import type { DiscoverResult, StatsResult } from 'shape-research-shared';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.DEV
+  ? '/api'
+  : 'https://shape-research-api.nicholasmaassen.workers.dev/api';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {

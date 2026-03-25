@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { Point } from 'shape-research-shared';
 import { usePointerStroke } from './usePointerStroke';
-import { drawStroke, drawLoop, drawShapeOutline, drawResultText, drawErrorText, getBBox, fadeStroke } from './strokeRenderer';
+import { drawStroke, drawLoop, drawShapeOutline, getBBox, fadeStroke } from './strokeRenderer';
 import { processShape } from '../pipeline/pipeline';
 import { discoverShape } from '../api/client';
 import { saveShape } from '../store/localStorage';
@@ -9,7 +9,19 @@ import { saveShape } from '../store/localStorage';
 const RESULT_DISPLAY_MS = 3000;
 const ERROR_DISPLAY_MS = 4000;
 
-export default function DrawCanvas() {
+export type ResultInfo = {
+  label: string;
+  isNew: boolean;
+} | {
+  label: string;
+  isError: true;
+} | null;
+
+interface DrawCanvasProps {
+  onResult?: (result: ResultInfo) => void;
+}
+
+export default function DrawCanvas({ onResult }: DrawCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const requestIdRef = useRef(0);
@@ -50,15 +62,14 @@ export default function DrawCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
-  const showError = useCallback((message: string) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawErrorText(ctx, message, canvas.width, canvas.height);
-    timerRef.current = setTimeout(() => clearCanvas(), ERROR_DISPLAY_MS);
-  }, [clearCanvas]);
+  const showResult = useCallback((result: ResultInfo, delayMs: number) => {
+    onResult?.(result);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      clearCanvas();
+      onResult?.(null);
+    }, delayMs);
+  }, [clearCanvas, onResult]);
 
   const handleStrokeUpdate = useCallback((points: Point[]) => {
     const canvas = canvasRef.current;
@@ -77,6 +88,7 @@ export default function DrawCanvas() {
 
     // Cancel any pending timer from a previous loop
     if (timerRef.current) clearTimeout(timerRef.current);
+    onResult?.(null);
 
     // Track this request so stale async results are discarded
     const thisRequest = ++requestIdRef.current;
@@ -93,7 +105,7 @@ export default function DrawCanvas() {
     try {
       shapeResult = processShape(loop);
     } catch (err) {
-      showError('failed to process shape');
+      showResult({ label: 'failed to process shape', isError: true }, ERROR_DISPLAY_MS);
       console.error('pipeline error:', err);
       return;
     }
@@ -106,7 +118,10 @@ export default function DrawCanvas() {
     } catch (err) {
       if (thisRequest !== requestIdRef.current) return;
       const msg = err instanceof Error ? err.message : 'unknown error';
-      showError(`server unreachable: ${msg}`);
+      showResult({ label: `server error: ${msg}`, isError: true }, ERROR_DISPLAY_MS);
+      // Still show the shape outline even on server error
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawShapeOutline(ctx, shapeResult.drawnRaster, bbox);
       console.error('discovery error:', err);
       return;
     }
@@ -123,15 +138,8 @@ export default function DrawCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawShapeOutline(ctx, shapeResult.drawnRaster, bbox);
 
-    // Draw result text below the raster
-    const label = isNew ? 'new shape!' : 'already discovered';
-    drawResultText(ctx, label, bbox, isNew);
-
-    // Clear after delay
-    timerRef.current = setTimeout(() => {
-      clearCanvas();
-    }, RESULT_DISPLAY_MS);
-  }, [clearCanvas, showError]);
+    showResult({ label: isNew ? 'new shape!' : 'already discovered', isNew }, RESULT_DISPLAY_MS);
+  }, [clearCanvas, showResult, onResult]);
 
   const handleStrokeEnd = useCallback((points: Point[]) => {
     const canvas = canvasRef.current;

@@ -1,7 +1,14 @@
+import { useState } from 'react';
 import DrawCanvas from '../canvas/DrawCanvas';
+import type { ResultInfo } from '../canvas/DrawCanvas';
 import { SECONDARY_COLOR, SMALL_FONT } from '../styles';
 
 export default function DrawPage() {
+  const [result, setResult] = useState<ResultInfo>(null);
+
+  const isError = result && 'isError' in result;
+  const isNew = result && 'isNew' in result && result.isNew;
+
   return (
     <div style={{
       display: 'flex',
@@ -27,8 +34,20 @@ export default function DrawPage() {
         touchAction: 'none',
         overflow: 'hidden',
       }}>
-        <DrawCanvas />
+        <DrawCanvas onResult={setResult} />
       </div>
+      <p
+        style={{
+          fontSize: SMALL_FONT,
+          color: isError ? '#c44' : isNew ? '#2a9d2a' : SECONDARY_COLOR,
+          minHeight: '1.5em',
+          transition: 'opacity 150ms ease',
+          opacity: result ? 1 : 0,
+        }}
+        aria-live="polite"
+      >
+        {result?.label ?? '\u00A0'}
+      </p>
     </div>
   );
 }
