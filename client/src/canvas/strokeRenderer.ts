@@ -75,7 +75,7 @@ export function getBBox(points: Point[], padding = 8): BBox {
 }
 
 /**
- * Draw the marching-squares outline of an 8×8 raster, scaled to fit the
+ * Draw the boundary outline of an 8×8 raster, scaled to fit the
  * given bounding box on the canvas. Stroked, not filled.
  */
 export function drawShapeOutline(
@@ -88,6 +88,7 @@ export function drawShapeOutline(
   if (!svgPath) return;
 
   const path = new Path2D(svgPath);
+  // Boundary tracing coordinates span [0, GRID_SIZE]
   const cellSize = Math.min(bbox.width, bbox.height) / GRID_SIZE;
   const totalSize = cellSize * GRID_SIZE;
   const offsetX = bbox.x + (bbox.width - totalSize) / 2;

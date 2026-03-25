@@ -1,78 +1,22 @@
 import { GRID_SIZE, type Point } from 'shape-research-shared';
 
 /**
- * Marching squares lookup table.
- * Each entry maps a 4-bit cell classification to a list of edge pairs.
- * Edges: 0=top, 1=right, 2=bottom, 3=left
- */
-const EDGE_TABLE: number[][] = [
-  [],         // 0000
-  [3, 0],     // 0001
-  [0, 1],     // 0010
-  [3, 1],     // 0011
-  [1, 2],     // 0100
-  [3, 0, 1, 2], // 0101 (saddle)
-  [0, 2],     // 0110
-  [3, 2],     // 0111
-  [2, 3],     // 1000
-  [2, 0],     // 1001
-  [0, 1, 2, 3], // 1010 (saddle)
-  [2, 1],     // 1011
-  [1, 3],     // 1100
-  [1, 0],     // 1101
-  [0, 3],     // 1110
-  [],         // 1111
-];
-
-function edgeMidpoint(edge: number, row: number, col: number): Point {
-  switch (edge) {
-    case 0: return { x: col + 0.5, y: row };       // top
-    case 1: return { x: col + 1, y: row + 0.5 };   // right
-    case 2: return { x: col + 0.5, y: row + 1 };   // bottom
-    case 3: return { x: col, y: row + 0.5 };        // left
-    default: return { x: col, y: row };
-  }
-}
-
-/**
- * Generate an SVG path string from an 8×8 binary raster using marching squares.
- * Returns a path suitable for rendering as a filled shape.
+ * Generate an SVG path string from an 8×8 binary raster by tracing the
+ * boundary edges between filled and empty cells.
+ *
+ * Each filled cell occupies [col, col+1] × [row, row+1] in output space.
+ * An edge is a boundary if it separates a filled cell from an empty cell
+ * (or the grid border). The directed edges are chained into closed contours.
+ *
+ * Output coordinates range from 0 to GRID_SIZE (8).
  */
 export function rasterToSvgPath(raster: number[]): string {
-  // Collect line segments from marching squares
-  const segments: [Point, Point][] = [];
+  const segments = collectBoundaryEdges(raster);
 
-  for (let row = 0; row < GRID_SIZE; row++) {
-    for (let col = 0; col < GRID_SIZE; col++) {
-      // Classify the four corners of this cell
-      // For marching squares on an 8x8 grid, we treat each cell as a pixel
-      // and look at 2x2 blocks of cells
-      const tl = (row > 0 && col > 0) ? raster[(row - 1) * GRID_SIZE + (col - 1)] : 0;
-      const tr = (row > 0 && col < GRID_SIZE) ? raster[(row - 1) * GRID_SIZE + col] : 0;
-      const br = (row < GRID_SIZE && col < GRID_SIZE) ? raster[row * GRID_SIZE + col] : 0;
-      const bl = (row < GRID_SIZE && col > 0) ? raster[row * GRID_SIZE + (col - 1)] : 0;
+  if (segments.length === 0) return '';
 
-      const cellType = (tl << 3) | (tr << 2) | (br << 1) | bl;
-      const edges = EDGE_TABLE[cellType];
-
-      for (let i = 0; i < edges.length; i += 2) {
-        segments.push([
-          edgeMidpoint(edges[i], row, col),
-          edgeMidpoint(edges[i + 1], row, col),
-        ]);
-      }
-    }
-  }
-
-  if (segments.length === 0) {
-    // Fallback: draw filled cells directly as rectangles
-    return rasterToRectPath(raster);
-  }
-
-  // Chain segments into contours
   const contours = chainSegments(segments);
 
-  // Build SVG path
   let path = '';
   for (const contour of contours) {
     if (contour.length < 2) continue;
@@ -83,48 +27,60 @@ export function rasterToSvgPath(raster: number[]): string {
     path += 'Z ';
   }
 
-  return path || rasterToRectPath(raster);
-}
-
-/**
- * Fallback: render each filled cell as a rectangle.
- */
-function rasterToRectPath(raster: number[]): string {
-  let path = '';
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
-      if (raster[r * GRID_SIZE + c]) {
-        path += `M ${c} ${r} h 1 v 1 h -1 Z `;
-      }
-    }
-  }
   return path;
 }
 
-/** Snap a coordinate to 2 decimal places and return a Map key. */
+/**
+ * Collect directed boundary edges from the raster.
+ * Edges are oriented so that the filled cell is to the right of the edge
+ * direction (clockwise winding).
+ */
+function collectBoundaryEdges(raster: number[]): [Point, Point][] {
+  const segments: [Point, Point][] = [];
+
+  for (let row = 0; row < GRID_SIZE; row++) {
+    for (let col = 0; col < GRID_SIZE; col++) {
+      if (!raster[row * GRID_SIZE + col]) continue;
+
+      // Top edge: if cell above is empty or OOB
+      if (row === 0 || !raster[(row - 1) * GRID_SIZE + col]) {
+        segments.push([{ x: col, y: row }, { x: col + 1, y: row }]);
+      }
+      // Right edge: if cell to the right is empty or OOB
+      if (col === GRID_SIZE - 1 || !raster[row * GRID_SIZE + col + 1]) {
+        segments.push([{ x: col + 1, y: row }, { x: col + 1, y: row + 1 }]);
+      }
+      // Bottom edge: if cell below is empty or OOB
+      if (row === GRID_SIZE - 1 || !raster[(row + 1) * GRID_SIZE + col]) {
+        segments.push([{ x: col + 1, y: row + 1 }, { x: col, y: row + 1 }]);
+      }
+      // Left edge: if cell to the left is empty or OOB
+      if (col === 0 || !raster[row * GRID_SIZE + col - 1]) {
+        segments.push([{ x: col, y: row + 1 }, { x: col, y: row }]);
+      }
+    }
+  }
+
+  return segments;
+}
+
+/** Map key for a point with integer coordinates. */
 function pointKey(p: Point): string {
-  return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+  return `${p.x},${p.y}`;
 }
 
 /**
- * Chain line segments into closed contours using an endpoint map for O(n) lookup.
+ * Chain directed line segments into closed contours.
+ * Uses a map from start-point to segment for O(n) chaining.
  */
 function chainSegments(segments: [Point, Point][]): Point[][] {
-  // Build adjacency map: each snapped endpoint → list of [segmentIndex, otherEndpoint]
-  const adj = new Map<string, { idx: number; other: Point }[]>();
-
+  // Build a map: pointKey(start) → list of segment indices
+  const startMap = new Map<string, number[]>();
   for (let i = 0; i < segments.length; i++) {
-    const [a, b] = segments[i];
-    const ka = pointKey(a);
-    const kb = pointKey(b);
-
-    let listA = adj.get(ka);
-    if (!listA) { listA = []; adj.set(ka, listA); }
-    listA.push({ idx: i, other: b });
-
-    let listB = adj.get(kb);
-    if (!listB) { listB = []; adj.set(kb, listB); }
-    listB.push({ idx: i, other: a });
+    const key = pointKey(segments[i][0]);
+    let list = startMap.get(key);
+    if (!list) { list = []; startMap.set(key, list); }
+    list.push(i);
   }
 
   const used = new Uint8Array(segments.length);
@@ -134,21 +90,24 @@ function chainSegments(segments: [Point, Point][]): Point[][] {
     if (used[start]) continue;
     used[start] = 1;
 
-    const contour: Point[] = [segments[start][0], segments[start][1]];
+    const contour: Point[] = [segments[start][0]];
+    let current = segments[start][1];
+    contour.push(current);
 
+    // Follow the chain: find a segment whose start matches current endpoint
     let extended = true;
     while (extended) {
       extended = false;
-      const last = contour[contour.length - 1];
-      const key = pointKey(last);
-      const neighbors = adj.get(key);
-      if (!neighbors) continue;
+      const key = pointKey(current);
+      const candidates = startMap.get(key);
+      if (!candidates) continue;
 
-      for (let n = 0; n < neighbors.length; n++) {
-        const entry = neighbors[n];
-        if (used[entry.idx]) continue;
-        used[entry.idx] = 1;
-        contour.push(entry.other);
+      for (let n = 0; n < candidates.length; n++) {
+        const idx = candidates[n];
+        if (used[idx]) continue;
+        used[idx] = 1;
+        current = segments[idx][1];
+        contour.push(current);
         extended = true;
         break;
       }
