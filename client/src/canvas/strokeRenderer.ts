@@ -1,5 +1,6 @@
 import type { Point } from 'shape-research-shared';
 import { GRID_SIZE } from 'shape-research-shared';
+import { rasterToSvgPath } from '../shape/marchingSquares';
 
 const STROKE_COLOR = '#111';
 const STROKE_WIDTH = 3;
@@ -74,38 +75,33 @@ export function getBBox(points: Point[], padding = 8): BBox {
 }
 
 /**
- * Draw an 8×8 binary raster fitted into the given bounding box on the canvas.
- * Renders filled cells as squares, preserving aspect ratio and centering.
+ * Draw the marching-squares outline of an 8×8 raster, scaled to fit the
+ * given bounding box on the canvas. Stroked, not filled.
  */
-export function drawRaster(
+export function drawShapeOutline(
   ctx: CanvasRenderingContext2D,
   raster: number[],
   bbox: BBox,
   alpha = 1,
 ): void {
+  const svgPath = rasterToSvgPath(raster);
+  if (!svgPath) return;
+
+  const path = new Path2D(svgPath);
   const cellSize = Math.min(bbox.width, bbox.height) / GRID_SIZE;
-  const totalW = cellSize * GRID_SIZE;
-  const totalH = cellSize * GRID_SIZE;
-  const offsetX = bbox.x + (bbox.width - totalW) / 2;
-  const offsetY = bbox.y + (bbox.height - totalH) / 2;
+  const totalSize = cellSize * GRID_SIZE;
+  const offsetX = bbox.x + (bbox.width - totalSize) / 2;
+  const offsetY = bbox.y + (bbox.height - totalSize) / 2;
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = STROKE_COLOR;
-
-  for (let row = 0; row < GRID_SIZE; row++) {
-    for (let col = 0; col < GRID_SIZE; col++) {
-      if (raster[row * GRID_SIZE + col]) {
-        ctx.fillRect(
-          offsetX + col * cellSize,
-          offsetY + row * cellSize,
-          cellSize,
-          cellSize,
-        );
-      }
-    }
-  }
-
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(cellSize, cellSize);
+  ctx.strokeStyle = STROKE_COLOR;
+  ctx.lineWidth = STROKE_WIDTH / cellSize;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke(path);
   ctx.restore();
 }
 
@@ -137,7 +133,6 @@ export function fadeStroke(
 ): () => void {
   const maybeCtx = canvas.getContext('2d');
   if (!maybeCtx) return () => {};
-  // Re-bind to a non-nullable const so TypeScript narrows inside the closure
   const ctx: CanvasRenderingContext2D = maybeCtx;
   const start = performance.now();
   let animId = 0;

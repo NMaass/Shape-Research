@@ -7,6 +7,8 @@ interface UsePointerStrokeOptions {
   onLoopClosed: (loop: Point[]) => void;
   onStrokeEnd: (points: Point[]) => void;
   minDistance?: number;
+  /** Max pixel distance between start and end to auto-close the loop */
+  snapDistance?: number;
 }
 
 export function usePointerStroke({
@@ -14,6 +16,7 @@ export function usePointerStroke({
   onLoopClosed,
   onStrokeEnd,
   minDistance = 3,
+  snapDistance = 30,
 }: UsePointerStrokeOptions) {
   const pointsRef = useRef<Point[]>([]);
   const activeRef = useRef(false);
@@ -47,16 +50,35 @@ export function usePointerStroke({
     if (!activeRef.current) return;
     activeRef.current = false;
 
-    const intersection = findAnySelfIntersection(pointsRef.current);
+    const points = pointsRef.current;
+
+    // First check for actual self-intersection
+    const intersection = findAnySelfIntersection(points);
     if (intersection) {
-      const loop = trimToLoop(pointsRef.current, intersection, intersection.secondSegmentIndex);
+      const loop = trimToLoop(points, intersection, intersection.secondSegmentIndex);
       onLoopClosed(loop);
-    } else {
-      onStrokeEnd([...pointsRef.current]);
+      pointsRef.current = [];
+      return;
     }
 
+    // If no intersection, check if end is close enough to start to snap closed
+    if (points.length >= 4) {
+      const start = points[0];
+      const end = points[points.length - 1];
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      if (dx * dx + dy * dy < snapDistance * snapDistance) {
+        // Close the loop by connecting back to start
+        const loop = [...points, start];
+        onLoopClosed(loop);
+        pointsRef.current = [];
+        return;
+      }
+    }
+
+    onStrokeEnd([...points]);
     pointsRef.current = [];
-  }, [onStrokeEnd, onLoopClosed]);
+  }, [onStrokeEnd, onLoopClosed, snapDistance]);
 
   return {
     handlePointerDown,
