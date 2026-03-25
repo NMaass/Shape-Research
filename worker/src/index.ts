@@ -4,7 +4,6 @@ export { ShapeRegistry };
 
 export interface Env {
   SHAPE_REGISTRY: DurableObjectNamespace;
-  SHAPES: KVNamespace;
 }
 
 const CORS_HEADERS = {
@@ -78,17 +77,6 @@ async function handleDiscover(request: Request, env: Env): Promise<Response> {
     body: JSON.stringify({ hash: body.hash, user: body.user }),
   }));
   const data = await res.json() as { isNew: boolean; discoveryNumber?: number };
-
-  // If new discovery, write metadata to KV
-  if (data.isNew) {
-    await env.SHAPES.put(`shape:${body.hash}`, JSON.stringify({
-      hash: body.hash,
-      descriptor: body.descriptor,
-      discoverer: body.user || 'anonymous',
-      timestamp: Date.now(),
-    }));
-  }
-
   return json(data);
 }
 

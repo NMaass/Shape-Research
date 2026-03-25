@@ -4,7 +4,7 @@ import { getStats } from '../api/client';
 import { getPersonalStats, useMyShapes } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
 
-const ESTIMATED_TOTAL = 50_000;
+const ESTIMATED_TOTAL = 100_000;
 
 type LoadState = 'loading' | 'error' | 'ready';
 
