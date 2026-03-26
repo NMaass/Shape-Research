@@ -33,6 +33,11 @@ function segmentIntersection(
 
   if (t < 0 || t > 1 || u < 0 || u > 1) return null;
 
+  // Exclude endpoint-touching: if t or u is very close to 0 or 1,
+  // the segments share an endpoint rather than properly crossing.
+  const EPS = 1e-6;
+  if (t < EPS || t > 1 - EPS || u < EPS || u > 1 - EPS) return null;
+
   return {
     t,
     u,
