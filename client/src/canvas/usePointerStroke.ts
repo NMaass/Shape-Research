@@ -68,9 +68,21 @@ export function usePointerStroke({
 
     const points = pointsRef.current;
 
-    // Prefer snap-close: if the end is near the start, use the entire stroke
-    // as the loop. This preserves complex shapes (stars, etc.) that would
-    // otherwise be truncated to a small triangle at the first crossing.
+    // 1. Self-intersection: trim to the largest clean loop.
+    //    This handles fish-tails (overshoot + double-back) and hourglasses
+    //    by cutting at the crossing point and discarding tails.
+    if (points.length >= 4) {
+      const intersection = findAnySelfIntersection(points);
+      if (intersection) {
+        const loop = trimToLoop(points, intersection, intersection.secondSegmentIndex);
+        onLoopClosed(loop);
+        pointsRef.current = [];
+        return;
+      }
+    }
+
+    // 2. Snap-close: if end is near start and no self-intersection,
+    //    close the loop at the starting point.
     if (points.length >= 4) {
       const start = points[0];
       const end = points[points.length - 1];
@@ -82,15 +94,6 @@ export function usePointerStroke({
         pointsRef.current = [];
         return;
       }
-    }
-
-    // Fall back to self-intersection detection
-    const intersection = findAnySelfIntersection(points);
-    if (intersection) {
-      const loop = trimToLoop(points, intersection, intersection.secondSegmentIndex);
-      onLoopClosed(loop);
-      pointsRef.current = [];
-      return;
     }
 
     onStrokeEnd([...points]);
