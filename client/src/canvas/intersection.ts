@@ -140,3 +140,45 @@ export function trimToLoop(
 
   return loop;
 }
+
+function loopPerimeter(pts: Point[]): number {
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) {
+    len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  }
+  return len;
+}
+
+/**
+ * Extract the largest closed loop from a self-intersecting stroke.
+ *
+ * At a crossing, the stroke forms two loops — one on each side of the
+ * crossing point. This picks the loop with the longer perimeter,
+ * so an hourglass/Z returns the bigger triangle, not the smaller one.
+ */
+export function trimToLargestLoop(
+  points: Point[],
+  intersection: FullIntersectionResult,
+): Point[] {
+  const { point, segmentIndex, secondSegmentIndex } = intersection;
+
+  // Loop A: from crossing through the points BETWEEN the two crossing segments
+  const loopA: Point[] = [point];
+  for (let i = segmentIndex + 1; i <= secondSegmentIndex; i++) {
+    loopA.push(points[i]);
+  }
+  loopA.push(point);
+
+  // Loop B: from crossing through the points OUTSIDE — before segmentIndex
+  // and after secondSegmentIndex, wrapping around
+  const loopB: Point[] = [point];
+  for (let i = secondSegmentIndex + 1; i < points.length; i++) {
+    loopB.push(points[i]);
+  }
+  for (let i = 0; i <= segmentIndex; i++) {
+    loopB.push(points[i]);
+  }
+  loopB.push(point);
+
+  return loopPerimeter(loopA) >= loopPerimeter(loopB) ? loopA : loopB;
+}
