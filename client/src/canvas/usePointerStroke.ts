@@ -2,6 +2,9 @@ import { useRef, useCallback } from 'react';
 import type { Point } from 'shape-research-shared';
 import { findAnySelfIntersection, trimToLargestLoop } from './intersection';
 
+/** Minimum bounding box diagonal (px) for a loop to be accepted. */
+const MIN_LOOP_SIZE = 30;
+
 interface UsePointerStrokeOptions {
   onStrokeUpdate: (points: Point[]) => void;
   onLoopClosed: (loop: Point[]) => void;
@@ -52,21 +55,31 @@ export function usePointerStroke({
 
     const points = pointsRef.current;
 
+    function isLargeEnough(loop: Point[]): boolean {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of loop) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+      return Math.hypot(maxX - minX, maxY - minY) >= MIN_LOOP_SIZE;
+    }
+
     // 1. Self-intersection: trim to the largest clean loop.
-    //    This handles fish-tails (overshoot + double-back) and hourglasses
-    //    by cutting at the crossing point and discarding tails.
     if (points.length >= 4) {
       const intersection = findAnySelfIntersection(points);
       if (intersection) {
         const loop = trimToLargestLoop(points, intersection);
-        onLoopClosed(loop);
-        pointsRef.current = [];
-        return;
+        if (isLargeEnough(loop)) {
+          onLoopClosed(loop);
+          pointsRef.current = [];
+          return;
+        }
       }
     }
 
-    // 2. Snap-close: if end is near start and no self-intersection,
-    //    close the loop at the starting point.
+    // 2. Snap-close: if end is near start and no self-intersection.
     if (points.length >= 4) {
       const start = points[0];
       const end = points[points.length - 1];
@@ -74,9 +87,11 @@ export function usePointerStroke({
       const dy = end.y - start.y;
       if (dx * dx + dy * dy < snapDistance * snapDistance) {
         const loop = [...points, start];
-        onLoopClosed(loop);
-        pointsRef.current = [];
-        return;
+        if (isLargeEnough(loop)) {
+          onLoopClosed(loop);
+          pointsRef.current = [];
+          return;
+        }
       }
     }
 
