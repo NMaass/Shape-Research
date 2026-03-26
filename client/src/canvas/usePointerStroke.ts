@@ -43,8 +43,24 @@ export function usePointerStroke({
     if (dx * dx + dy * dy < minDistance * minDistance) return;
 
     points.push({ x, y, t: e.timeStamp });
+
+    // Check for self-intersection on each new segment — if the stroke
+    // crosses itself, immediately close the loop at the crossing point.
+    // This trims both the lead-in tail (before the intersection) and
+    // any overshoot, evaluating only the closed loop.
+    if (points.length >= 4) {
+      const intersection = findFirstSelfIntersection(points);
+      if (intersection) {
+        const loop = trimToLoop(points, intersection);
+        activeRef.current = false;
+        pointsRef.current = [];
+        onLoopClosed(loop);
+        return;
+      }
+    }
+
     onStrokeUpdate([...points]);
-  }, [onStrokeUpdate, minDistance]);
+  }, [onStrokeUpdate, onLoopClosed, minDistance]);
 
   const handlePointerUp = useCallback((_e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!activeRef.current) return;
