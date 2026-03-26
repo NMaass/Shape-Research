@@ -1,12 +1,9 @@
 import { useRef, useCallback } from 'react';
 import type { Point } from 'shape-research-shared';
-import { findAnySelfIntersection, trimToLargestLoop } from './intersection';
+import { findFirstSelfIntersection, trimToLoop, type IntersectionResult } from './intersection';
 
 /** Minimum bounding box diagonal (px) for a loop to be accepted. */
 const MIN_LOOP_SIZE = 50;
-
-/** When closing, trim tail to the point closest to start if it's within this distance. */
-const CLOSE_PROXIMITY = 15;
 
 interface UsePointerStrokeOptions {
   onStrokeUpdate: (points: Point[]) => void;
@@ -28,50 +25,6 @@ function bboxDiag(pts: Point[]): number {
   return Math.hypot(maxX - minX, maxY - minY);
 }
 
-/**
- * Trim the stroke tail: find the point after the halfway mark that is
- * closest to the start, and cut everything after it. This removes
- * overshoot, jagged closes, and fish-tails cleanly.
- */
-function trimTail(points: Point[]): Point[] {
-  if (points.length < 6) return points;
-  const start = points[0];
-  const half = Math.floor(points.length / 2);
-
-  let bestIdx = points.length - 1;
-  let bestDist = Infinity;
-  for (let i = half; i < points.length; i++) {
-    const d = Math.hypot(points[i].x - start.x, points[i].y - start.y);
-    if (d < bestDist) { bestDist = d; bestIdx = i; }
-  }
-
-  // Only trim if the closest point is reasonably close to start
-  if (bestDist > CLOSE_PROXIMITY * 2) return points;
-  return points.slice(0, bestIdx + 1);
-}
-
-/**
- * Detect if any non-adjacent parts of the stroke get very close (pinch point).
- * Returns the indices of the two close points, or null.
- * This catches hourglasses where segments don't technically cross but nearly touch.
- */
-function findPinchPoint(points: Point[], proximity: number): { i: number; j: number } | null {
-  const minGap = Math.max(10, Math.floor(points.length * 0.15));
-  const proxSq = proximity * proximity;
-
-  // Check every pair with sufficient separation along the stroke
-  for (let i = 0; i < points.length - minGap; i++) {
-    for (let j = i + minGap; j < points.length; j++) {
-      const dx = points[j].x - points[i].x;
-      const dy = points[j].y - points[i].y;
-      if (dx * dx + dy * dy < proxSq) {
-        return { i, j };
-      }
-    }
-  }
-  return null;
-}
-
 export function usePointerStroke({
   onStrokeUpdate,
   onLoopClosed,
@@ -82,11 +35,19 @@ export function usePointerStroke({
   const pointsRef = useRef<Point[]>([]);
   const activeRef = useRef(false);
 
+  /** The first self-intersection detected during drawing, if any. */
+  const firstIntersectionRef = useRef<{
+    intersection: IntersectionResult;
+    /** The number of points at the time of detection — everything after is tail. */
+    pointCount: number;
+  } | null>(null);
+
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     canvas.setPointerCapture(e.pointerId);
     pointsRef.current = [{ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, t: e.timeStamp }];
     activeRef.current = true;
+    firstIntersectionRef.current = null;
     onStrokeUpdate(pointsRef.current);
   }, [onStrokeUpdate]);
 
@@ -104,6 +65,19 @@ export function usePointerStroke({
     if (dx * dx + dy * dy < minDistance * minDistance) return;
 
     points.push({ x, y, t: e.timeStamp });
+
+    // Secretly record the first self-intersection. Don't stop drawing —
+    // just remember it so we can use it on pen up.
+    if (!firstIntersectionRef.current && points.length >= 4) {
+      const ix = findFirstSelfIntersection(points);
+      if (ix) {
+        firstIntersectionRef.current = {
+          intersection: ix,
+          pointCount: points.length,
+        };
+      }
+    }
+
     onStrokeUpdate([...points]);
   }, [onStrokeUpdate, minDistance]);
 
@@ -117,56 +91,38 @@ export function usePointerStroke({
       if (bboxDiag(loop) < MIN_LOOP_SIZE) return false;
       onLoopClosed(loop);
       pointsRef.current = [];
+      firstIntersectionRef.current = null;
       return true;
     }
 
     if (points.length < 4) {
       onStrokeEnd([...points]);
       pointsRef.current = [];
+      firstIntersectionRef.current = null;
       return;
     }
 
-    // 1. Self-intersection: trim to the largest clean loop.
-    const intersection = findAnySelfIntersection(points);
-    if (intersection) {
-      const loop = trimToLargestLoop(points, intersection);
+    // 1. If we secretly recorded a first intersection during drawing,
+    //    use it. Trim the stroke to only the points up to that moment,
+    //    then extract the loop. Everything after the intersection is tail.
+    const saved = firstIntersectionRef.current;
+    if (saved) {
+      const trimmedPoints = points.slice(0, saved.pointCount);
+      const loop = trimToLoop(trimmedPoints, saved.intersection);
       if (tryClose(loop)) return;
     }
 
-    // 2. Trim tail back to closest approach to start, then close.
-    //    This handles overshoot, jagged closes, and fish-tails.
-    const trimmed = trimTail(points);
-
-    // 3. Check trimmed stroke for self-intersection (hourglass after trimming)
-    if (trimmed.length >= 4) {
-      const closedTrimmed = [...trimmed, trimmed[0]];
-      const trimIx = findAnySelfIntersection(closedTrimmed);
-      if (trimIx) {
-        const loop = trimToLargestLoop(closedTrimmed, trimIx);
-        if (tryClose(loop)) return;
-      }
-    }
-
-    // 4. Pinch detection: find where non-adjacent parts nearly touch (hourglass).
-    //    Split at the pinch and take the larger sub-loop.
-    const pinch = findPinchPoint(trimmed, CLOSE_PROXIMITY);
-    if (pinch) {
-      const loopA = [...trimmed.slice(pinch.i, pinch.j + 1), trimmed[pinch.i]];
-      const loopB = [...trimmed.slice(pinch.j), ...trimmed.slice(0, pinch.i + 1)];
-      const best = bboxDiag(loopA) >= bboxDiag(loopB) ? loopA : loopB;
-      if (tryClose(best)) return;
-    }
-
-    // 5. Snap-close: if end of (trimmed) stroke is near start.
-    const start = trimmed[0];
-    const end = trimmed[trimmed.length - 1];
+    // 2. Snap-close: if end is near start, close the loop.
+    const start = points[0];
+    const end = points[points.length - 1];
     if (Math.hypot(end.x - start.x, end.y - start.y) < snapDistance) {
-      const loop = [...trimmed, start];
+      const loop = [...points, start];
       if (tryClose(loop)) return;
     }
 
     onStrokeEnd([...points]);
     pointsRef.current = [];
+    firstIntersectionRef.current = null;
   }, [onStrokeEnd, onLoopClosed, snapDistance]);
 
   return {
