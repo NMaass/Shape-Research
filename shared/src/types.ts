@@ -3,6 +3,8 @@ export const GRID_SIZE = 8;
 export interface Point {
   x: number;
   y: number;
+  /** Optional timestamp in ms (from pointer event). Used for velocity-based corner detection. */
+  t?: number;
 }
 
 export interface ShapeDescriptor {

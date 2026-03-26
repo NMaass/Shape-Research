@@ -4,7 +4,7 @@ import type { ShapeDescriptor, Point } from 'shape-research-shared';
 const STORAGE_KEY = 'shape-research-discoveries';
 const STATS_KEY = 'shape-research-personal-stats';
 const VERSION_KEY = 'shape-research-version';
-const CURRENT_VERSION = 2; // bump when hash algorithm changes
+const CURRENT_VERSION = 3; // bump when hash algorithm changes
 const MAX_STORED_SHAPES = 500;
 
 // Clear stale data when the hash algorithm changes

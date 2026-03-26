@@ -24,7 +24,7 @@ export function usePointerStroke({
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     canvas.setPointerCapture(e.pointerId);
-    pointsRef.current = [{ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY }];
+    pointsRef.current = [{ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, t: e.timeStamp }];
     activeRef.current = true;
     onStrokeUpdate(pointsRef.current);
   }, [onStrokeUpdate]);
@@ -42,7 +42,7 @@ export function usePointerStroke({
     const dy = y - last.y;
     if (dx * dx + dy * dy < minDistance * minDistance) return;
 
-    points.push({ x, y });
+    points.push({ x, y, t: e.timeStamp });
     onStrokeUpdate([...points]);
   }, [onStrokeUpdate, minDistance]);
 

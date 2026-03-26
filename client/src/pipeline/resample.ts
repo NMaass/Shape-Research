@@ -18,6 +18,7 @@ export function resample(points: Point[], n: number): Point[] {
   if (totalLen === 0) return [points[0]];
 
   const step = totalLen / (n - 1);
+  const hasTime = points[0].t != null;
   const result: Point[] = [{ ...points[0] }];
 
   let segIdx = 1;
@@ -35,10 +36,14 @@ export function resample(points: Point[], n: number): Point[] {
     const segLen = segEnd - segStart;
     const t = segLen > 0 ? (targetLen - segStart) / segLen : 0;
 
-    result.push({
+    const p: Point = {
       x: points[segIdx - 1].x + t * (points[segIdx].x - points[segIdx - 1].x),
       y: points[segIdx - 1].y + t * (points[segIdx].y - points[segIdx - 1].y),
-    });
+    };
+    if (hasTime) {
+      p.t = (points[segIdx - 1].t ?? 0) + t * ((points[segIdx].t ?? 0) - (points[segIdx - 1].t ?? 0));
+    }
+    result.push(p);
   }
 
   result.push({ ...points[points.length - 1] });

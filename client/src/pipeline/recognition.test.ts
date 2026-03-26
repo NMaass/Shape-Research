@@ -110,12 +110,16 @@ function reverseDirection(pts: Point[]): Point[] {
 }
 
 function quickDrawToPoints(drawing: number[][]): Point[] {
-  const pts: Point[] = drawing.map(([x, y]) => ({ x, y }));
+  const pts: Point[] = drawing.map(coords => {
+    const p: Point = { x: coords[0], y: coords[1] };
+    if (coords.length >= 3) p.t = coords[2]; // timestamp if available
+    return p;
+  });
   // Close the shape if not already closed
   if (pts.length > 2) {
     const first = pts[0], last = pts[pts.length - 1];
     if (Math.hypot(first.x - last.x, first.y - last.y) > 5) {
-      pts.push({ ...first });
+      pts.push({ ...first, t: last.t ? last.t + 10 : undefined });
     }
   }
   return pts;

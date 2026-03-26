@@ -84,46 +84,96 @@ function turningAngle(points: Point[], i: number, windowSize: number): number {
 }
 
 /**
+ * Compute smoothed speed at each point (pixels per ms).
+ * Returns null if timing data is unavailable.
+ */
+function computeSpeed(points: Point[], windowSize: number): number[] | null {
+  const n = points.length - 1;
+  if (!points[0].t || !points[1]?.t) return null;
+
+  const raw: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    const dt = (points[next].t ?? 0) - (points[i].t ?? 0);
+    const dist = Math.hypot(points[next].x - points[i].x, points[next].y - points[i].y);
+    raw.push(dt > 0 ? dist / dt : 0);
+  }
+
+  // Smooth with moving average
+  const smoothed: number[] = [];
+  for (let i = 0; i < n; i++) {
+    let sum = 0, count = 0;
+    for (let j = -windowSize; j <= windowSize; j++) {
+      const idx = ((i + j) % n + n) % n;
+      sum += raw[idx];
+      count++;
+    }
+    smoothed.push(sum / count);
+  }
+  return smoothed;
+}
+
+/**
  * Detect corner vertices in a closed loop.
- * Uses turning angle peaks — points where the path turns sharply.
+ * Uses turning angle peaks, optionally boosted by velocity minima
+ * (people slow down at intended corners).
  */
 export function detectCorners(points: Point[]): number[] {
   const n = points.length - 1; // closed loop, last = first
   if (n < 8) return [];
 
   // Window size for computing turning angle (adaptive to shape size)
-  // Larger window = more smoothing = fewer spurious corners from noise
   const window = Math.max(3, Math.floor(n * 0.08));
 
   // Compute turning angles
-  const angles: number[] = [];
+  const turnAngles: number[] = [];
   for (let i = 0; i < n; i++) {
-    angles.push(turningAngle(points, i, window));
+    turnAngles.push(turningAngle(points, i, window));
   }
 
-  // Threshold: 20° catches obtuse-angle corners (e.g. 160° interior = 20° turn)
-  // while the large smoothing window filters out freehand wobble
+  // Compute speed signal (null if no timing data)
+  const speed = computeSpeed(points, window);
+
+  // Build combined corner score: turning angle + velocity penalty.
+  // If speed data exists, low speed boosts the score.
+  const scores: number[] = [];
+  if (speed) {
+    // Normalize speed to [0, 1] where 0 = stopped, 1 = max speed
+    const maxSpeed = Math.max(...speed, 1e-6);
+    const normSpeed = speed.map(s => s / maxSpeed);
+
+    // Corner score = turning angle * (1 + velocity_boost)
+    // velocity_boost = (1 - normalized_speed), so slow = big boost
+    for (let i = 0; i < n; i++) {
+      const velBoost = 1 - normSpeed[i]; // 0 at max speed, 1 at zero speed
+      scores.push(turnAngles[i] * (1 + velBoost));
+    }
+  } else {
+    for (let i = 0; i < n; i++) scores.push(turnAngles[i]);
+  }
+
+  // Threshold: 20° base, but with velocity boost a 15° turn at low speed
+  // can score 15 * 2 = 30, well above threshold.
   const threshold = 20;
 
   // Find peaks above threshold with non-maximum suppression
   const minSep = Math.max(5, Math.floor(n * 0.10));
-  const peaks: { idx: number; angle: number }[] = [];
+  const peaks: { idx: number; score: number }[] = [];
 
   for (let i = 0; i < n; i++) {
-    if (angles[i] < threshold) continue;
+    if (scores[i] < threshold) continue;
 
-    // Check if this is a local maximum in the window
     let isMax = true;
     for (let j = Math.max(0, i - minSep); j <= Math.min(n - 1, i + minSep); j++) {
-      if (j !== i && angles[j] > angles[i]) { isMax = false; break; }
+      if (j !== i && scores[j] > scores[i]) { isMax = false; break; }
     }
     if (isMax) {
-      peaks.push({ idx: i, angle: angles[i] });
+      peaks.push({ idx: i, score: scores[i] });
     }
   }
 
-  // Sort by angle strength (strongest corners first) for filtering
-  peaks.sort((a, b) => b.angle - a.angle);
+  // Sort by score strength (strongest corners first)
+  peaks.sort((a, b) => b.score - a.score);
 
   // Keep corners with minimum separation
   const kept: number[] = [];
