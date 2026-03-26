@@ -5,6 +5,9 @@ import { findAnySelfIntersection, trimToLargestLoop } from './intersection';
 /** Minimum bounding box diagonal (px) for a loop to be accepted. */
 const MIN_LOOP_SIZE = 50;
 
+/** When closing, trim tail to the point closest to start if it's within this distance. */
+const CLOSE_PROXIMITY = 15;
+
 interface UsePointerStrokeOptions {
   onStrokeUpdate: (points: Point[]) => void;
   onLoopClosed: (loop: Point[]) => void;
@@ -12,6 +15,61 @@ interface UsePointerStrokeOptions {
   minDistance?: number;
   /** Max pixel distance between start and end to auto-close the loop */
   snapDistance?: number;
+}
+
+function bboxDiag(pts: Point[]): number {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of pts) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return Math.hypot(maxX - minX, maxY - minY);
+}
+
+/**
+ * Trim the stroke tail: find the point after the halfway mark that is
+ * closest to the start, and cut everything after it. This removes
+ * overshoot, jagged closes, and fish-tails cleanly.
+ */
+function trimTail(points: Point[]): Point[] {
+  if (points.length < 6) return points;
+  const start = points[0];
+  const half = Math.floor(points.length / 2);
+
+  let bestIdx = points.length - 1;
+  let bestDist = Infinity;
+  for (let i = half; i < points.length; i++) {
+    const d = Math.hypot(points[i].x - start.x, points[i].y - start.y);
+    if (d < bestDist) { bestDist = d; bestIdx = i; }
+  }
+
+  // Only trim if the closest point is reasonably close to start
+  if (bestDist > CLOSE_PROXIMITY * 2) return points;
+  return points.slice(0, bestIdx + 1);
+}
+
+/**
+ * Detect if any non-adjacent parts of the stroke get very close (pinch point).
+ * Returns the indices of the two close points, or null.
+ * This catches hourglasses where segments don't technically cross but nearly touch.
+ */
+function findPinchPoint(points: Point[], proximity: number): { i: number; j: number } | null {
+  const minGap = Math.max(10, Math.floor(points.length * 0.15));
+  const proxSq = proximity * proximity;
+
+  // Check every pair with sufficient separation along the stroke
+  for (let i = 0; i < points.length - minGap; i++) {
+    for (let j = i + minGap; j < points.length; j++) {
+      const dx = points[j].x - points[i].x;
+      const dy = points[j].y - points[i].y;
+      if (dx * dx + dy * dy < proxSq) {
+        return { i, j };
+      }
+    }
+  }
+  return null;
 }
 
 export function usePointerStroke({
@@ -55,53 +113,56 @@ export function usePointerStroke({
 
     const points = pointsRef.current;
 
-    function isLargeEnough(loop: Point[]): boolean {
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      for (const p of loop) {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
-      }
-      return Math.hypot(maxX - minX, maxY - minY) >= MIN_LOOP_SIZE;
+    function tryClose(loop: Point[]): boolean {
+      if (bboxDiag(loop) < MIN_LOOP_SIZE) return false;
+      onLoopClosed(loop);
+      pointsRef.current = [];
+      return true;
+    }
+
+    if (points.length < 4) {
+      onStrokeEnd([...points]);
+      pointsRef.current = [];
+      return;
     }
 
     // 1. Self-intersection: trim to the largest clean loop.
-    if (points.length >= 4) {
-      const intersection = findAnySelfIntersection(points);
-      if (intersection) {
-        const loop = trimToLargestLoop(points, intersection);
-        if (isLargeEnough(loop)) {
-          onLoopClosed(loop);
-          pointsRef.current = [];
-          return;
-        }
+    const intersection = findAnySelfIntersection(points);
+    if (intersection) {
+      const loop = trimToLargestLoop(points, intersection);
+      if (tryClose(loop)) return;
+    }
+
+    // 2. Trim tail back to closest approach to start, then close.
+    //    This handles overshoot, jagged closes, and fish-tails.
+    const trimmed = trimTail(points);
+
+    // 3. Check trimmed stroke for self-intersection (hourglass after trimming)
+    if (trimmed.length >= 4) {
+      const closedTrimmed = [...trimmed, trimmed[0]];
+      const trimIx = findAnySelfIntersection(closedTrimmed);
+      if (trimIx) {
+        const loop = trimToLargestLoop(closedTrimmed, trimIx);
+        if (tryClose(loop)) return;
       }
     }
 
-    // 2. Snap-close: if end is near start and no open-stroke intersection was found.
-    //    After closing, still check for self-intersection in the closed loop —
-    //    this catches hourglasses where end ≈ start but the stroke crossed itself.
-    if (points.length >= 4) {
-      const start = points[0];
-      const end = points[points.length - 1];
-      const dx = end.x - start.x;
-      const dy = end.y - start.y;
-      if (dx * dx + dy * dy < snapDistance * snapDistance) {
-        let loop = [...points, start];
+    // 4. Pinch detection: find where non-adjacent parts nearly touch (hourglass).
+    //    Split at the pinch and take the larger sub-loop.
+    const pinch = findPinchPoint(trimmed, CLOSE_PROXIMITY);
+    if (pinch) {
+      const loopA = [...trimmed.slice(pinch.i, pinch.j + 1), trimmed[pinch.i]];
+      const loopB = [...trimmed.slice(pinch.j), ...trimmed.slice(0, pinch.i + 1)];
+      const best = bboxDiag(loopA) >= bboxDiag(loopB) ? loopA : loopB;
+      if (tryClose(best)) return;
+    }
 
-        // Check the closed loop for self-intersections and trim if found
-        const loopIx = findAnySelfIntersection(loop);
-        if (loopIx) {
-          loop = trimToLargestLoop(loop, loopIx);
-        }
-
-        if (isLargeEnough(loop)) {
-          onLoopClosed(loop);
-          pointsRef.current = [];
-          return;
-        }
-      }
+    // 5. Snap-close: if end of (trimmed) stroke is near start.
+    const start = trimmed[0];
+    const end = trimmed[trimmed.length - 1];
+    if (Math.hypot(end.x - start.x, end.y - start.y) < snapDistance) {
+      const loop = [...trimmed, start];
+      if (tryClose(loop)) return;
     }
 
     onStrokeEnd([...points]);
