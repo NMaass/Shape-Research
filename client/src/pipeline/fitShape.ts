@@ -256,6 +256,75 @@ function makeCircleDescriptor(points: Point[]): ShapeDescriptor {
   return { n: 0, angles: [], edgeRatios: [qRatio], bulges: [1.0] };
 }
 
+// --- FFT-based side count detection ---
+
+/**
+ * Detect the number of sides in a near-circular polygon using FFT of the
+ * radius-from-centroid signal.
+ *
+ * A regular N-gon inscribed in a circle produces a radius signal that
+ * oscillates N times per revolution. The FFT of this signal shows a
+ * strong peak at harmonic N. A true circle has no peaks beyond DC.
+ *
+ * Returns 0 for circles, or the detected side count (3-12).
+ */
+function detectSideCountFFT(points: Point[]): number {
+  const n = points.length - 1; // closed loop
+  if (n < 16) return 0;
+
+  // Compute centroid
+  let cx = 0, cy = 0;
+  for (let i = 0; i < n; i++) { cx += points[i].x; cy += points[i].y; }
+  cx /= n; cy /= n;
+
+  // Compute radius signal (detrended: subtract mean)
+  const radii: number[] = [];
+  let meanR = 0;
+  for (let i = 0; i < n; i++) {
+    const r = Math.hypot(points[i].x - cx, points[i].y - cy);
+    radii.push(r);
+    meanR += r;
+  }
+  meanR /= n;
+  if (meanR === 0) return 0;
+
+  // Compute DFT magnitudes for harmonics 2..12
+  // (harmonic 1 = ellipticity, not side count)
+  let maxMag = 0;
+  let maxK = 0;
+  const magnitudes: { k: number; mag: number }[] = [];
+
+  for (let k = 2; k <= 12; k++) {
+    let re = 0, im = 0;
+    for (let i = 0; i < n; i++) {
+      const phase = (2 * Math.PI * k * i) / n;
+      re += (radii[i] - meanR) * Math.cos(phase);
+      im += (radii[i] - meanR) * Math.sin(phase);
+    }
+    const mag = Math.sqrt(re * re + im * im) / n;
+    magnitudes.push({ k, mag });
+    if (mag > maxMag) { maxMag = mag; maxK = k; }
+  }
+
+  // Normalize by mean radius — the peak magnitude relative to mean radius
+  // tells us how "polygon-like" vs "circle-like" the shape is.
+  // A regular N-gon has peak magnitude ~= meanR * (1 - cos(pi/N)).
+  // For N=8: ~0.076 * meanR. For N=12: ~0.034 * meanR.
+  // Freehand noise typically produces peaks < 0.02 * meanR.
+  const peakRatio = maxMag / meanR;
+
+  if (peakRatio < 0.01) return 0; // too weak — it's a circle
+  if (maxK < 3) return 0; // harmonic 2 is ellipticity, not a polygon
+
+  // Verify the peak is clearly dominant — at least 2.5x the median harmonic.
+  // Freehand noise produces broad, flat spectra; real polygons have sharp peaks.
+  const mags = magnitudes.map(m => m.mag).sort((a, b) => a - b);
+  const median = mags[Math.floor(mags.length / 2)];
+  if (maxMag < median * 2.5) return 0;
+
+  return maxK;
+}
+
 // --- Main fitting function ---
 
 /** Check if a shape is circle-like by radius variance. */
@@ -280,7 +349,7 @@ function isCirclelike(points: Point[]): boolean {
 
 export function fitShape(loopPoints: Point[]): FitResult {
   // Always detect corners
-  const corners = detectCorners(loopPoints);
+  let corners = detectCorners(loopPoints);
 
   // Determine total turning angle at detected corners
   const n = loopPoints.length - 1;
@@ -297,7 +366,24 @@ export function fitShape(loopPoints: Point[]): FitResult {
   // to much less than 360° because the real curvature is distributed smoothly.
   // Threshold: 85% of 360° (306°). Real polygons hit ~360°, noisy circles
   // typically sum to 180-280° even with many spurious corners.
-  const circlelike = isCirclelike(loopPoints) && turningAngleSum < 306;
+  let circlelike = isCirclelike(loopPoints) && turningAngleSum < 306;
+
+  // FFT of radius signal detects polygon periodicity even when individual
+  // corners are too soft for turning-angle detection. This catches octagons
+  // and other many-sided polygons.
+  const fftSides = detectSideCountFFT(loopPoints);
+
+  // If FFT sees a polygon, override circle classification
+  if (circlelike && fftSides >= 3) {
+    circlelike = false;
+  }
+
+  // If corner detection found fewer corners than FFT expects, use FFT count
+  // to place corners at evenly-spaced positions (best guess for regular polygon).
+  if (fftSides >= 3 && corners.length < fftSides) {
+    const step = Math.round((loopPoints.length - 1) / fftSides);
+    corners = Array.from({ length: fftSides }, (_, i) => i * step);
+  }
 
   if (circlelike || corners.length < 2) {
     // For circles, build drawn vertices from a fitted ellipse
