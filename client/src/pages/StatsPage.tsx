@@ -4,11 +4,12 @@ import { getStats } from '../api/client';
 import { getPersonalStats, useMyShapes } from '../store/localStorage';
 import FittedShape from '../shape/FittedShape';
 
-// Practical shape count: the pipeline reliably distinguishes ~50k shapes given
-// its 15° angle quantum, 0.2 edge ratio steps, corner detection limits, and
-// 128-point resampling. Theoretical Burnside count is billions, but smoothing
-// and detection thresholds collapse most of that space.
-const ESTIMATED_TOTAL = 50_000;
+// Shape count computed from quantization bins:
+// Σ_n [AngleTuples(n) × (5^n - 4^n) × 1 ÷ 2n] for n=3..6, straight edges.
+// AngleTuples = compositions of (n-2)×180° into n parts at 15° steps.
+// 55 triangles × 489 quads × 1,420 pentagons × 1,751 hexagons angle combos,
+// times edge ratio permutations, divided by dihedral symmetry.
+const ESTIMATED_TOTAL = 2_000_000;
 
 type LoadState = 'loading' | 'error' | 'ready';
 
