@@ -3,7 +3,7 @@ import type { Point } from 'shape-research-shared';
 import { findAnySelfIntersection, trimToLargestLoop } from './intersection';
 
 /** Minimum bounding box diagonal (px) for a loop to be accepted. */
-const MIN_LOOP_SIZE = 30;
+const MIN_LOOP_SIZE = 50;
 
 interface UsePointerStrokeOptions {
   onStrokeUpdate: (points: Point[]) => void;
@@ -79,14 +79,23 @@ export function usePointerStroke({
       }
     }
 
-    // 2. Snap-close: if end is near start and no self-intersection.
+    // 2. Snap-close: if end is near start and no open-stroke intersection was found.
+    //    After closing, still check for self-intersection in the closed loop —
+    //    this catches hourglasses where end ≈ start but the stroke crossed itself.
     if (points.length >= 4) {
       const start = points[0];
       const end = points[points.length - 1];
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       if (dx * dx + dy * dy < snapDistance * snapDistance) {
-        const loop = [...points, start];
+        let loop = [...points, start];
+
+        // Check the closed loop for self-intersections and trim if found
+        const loopIx = findAnySelfIntersection(loop);
+        if (loopIx) {
+          loop = trimToLargestLoop(loop, loopIx);
+        }
+
         if (isLargeEnough(loop)) {
           onLoopClosed(loop);
           pointsRef.current = [];
