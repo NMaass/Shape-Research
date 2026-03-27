@@ -7,27 +7,20 @@ export interface Env {
   SHAPES: KVNamespace;
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
-
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    headers: { 'Content-Type': 'application/json' },
   });
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: CORS_HEADERS });
-    }
-
     const url = new URL(request.url);
     const path = url.pathname;
+
+    // Only handle /api routes — everything else falls through to static assets
+    if (!path.startsWith('/api/')) return fetch(request);
 
     try {
       if (path === '/api/check' && request.method === 'GET') {

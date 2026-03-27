@@ -2,6 +2,10 @@ name = "shape-research-api"
 main = "src/index.ts"
 compatibility_date = "2024-12-30"
 
+[assets]
+directory = "../client/dist"
+not_found_handling = "single-page-application"
+
 [durable_objects]
 bindings = [
   { name = "SHAPE_REGISTRY", class_name = "ShapeRegistry" }
