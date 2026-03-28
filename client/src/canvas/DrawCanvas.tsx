@@ -153,7 +153,7 @@ export default function DrawCanvas({ onResult }: DrawCanvasProps) {
         display: 'block',
         width: '100%',
         height: '100%',
-        cursor: 'crosshair',
+        cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 21l1.5-4.5L17.3 3.7a1 1 0 011.4 0l1.6 1.6a1 1 0 010 1.4L7.5 19.5z' fill='%23333' stroke='%23333' stroke-width='1'/%3E%3Cpath d='M3 21l1.5-4.5 3 3z' fill='%23666'/%3E%3C/svg%3E") 2 22, crosshair`,
       }}
     />
   );
